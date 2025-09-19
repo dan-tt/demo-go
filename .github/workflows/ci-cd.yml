@@ -210,14 +210,25 @@ jobs:
           GIT_BRANCH=${{ github.ref_name }}
 
     - name: Generate SBOM
-      uses: anchore/sbom-action@v0
+      uses: anchore/sbom-action@v0.17.2
       with:
-        image: ${{ steps.meta.outputs.tags }}
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-${{ github.sha }}
         format: spdx-json
         output-file: sbom.spdx.json
+      continue-on-error: true  # Don't fail the build if SBOM generation fails
+
+    - name: Alternative SBOM generation using Syft directly
+      if: failure()  # Only run if the previous step failed
+      run: |
+        # Install syft directly
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        # Generate SBOM for the source code
+        syft . -o spdx-json=sbom.spdx.json
+      continue-on-error: true
 
     - name: Upload SBOM artifact
       uses: actions/upload-artifact@v4
+      if: always() && hashFiles('sbom.spdx.json') != ''
       with:
         name: sbom
         path: sbom.spdx.json
