@@ -1,0 +1,64 @@
+# GraphQL Schema for User Management
+# This schema defines the User type and operations for user management
+
+# User type definition
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+# Input types for mutations
+input CreateUserInput {
+  name: String!
+  email: String!
+}
+
+input UpdateUserInput {
+  name: String
+  email: String
+}
+
+# Custom scalar for time
+scalar Time
+
+# Query operations
+type Query {
+  # Get a single user by ID
+  getUser(id: ID!): User
+
+  # Get all users (with optional pagination)
+  getUsers(limit: Int, offset: Int): [User!]!
+
+  # Search users by name or email
+  searchUsers(query: String!): [User!]!
+
+  # Get current user (authenticated)
+  me: User
+}
+
+# Mutation operations
+type Mutation {
+  # Create a new user
+  createUser(input: CreateUserInput!): User!
+
+  # Update an existing user
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+
+  # Delete a user
+  deleteUser(id: ID!): Boolean!
+}
+
+# Subscription operations (for real-time updates)
+type Subscription {
+  # Subscribe to user creation events
+  userCreated: User!
+
+  # Subscribe to user updates
+  userUpdated: User!
+
+  # Subscribe to user deletion events
+  userDeleted: ID!
+}

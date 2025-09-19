@@ -1,0 +1,64 @@
+# gqlgen configuration file
+# See https://gqlgen.com/config for detailed configuration options
+
+# The GraphQL schema file(s)
+schema:
+  - schema.graphql
+
+# Where to write the generated server code
+exec:
+  filename: internal/graphql/generated.go
+  package: graphql
+
+# Where to write the generated resolver interfaces
+resolver:
+  filename: internal/graphql/resolver.go
+  package: graphql
+  type: Resolver
+
+# Where to write the generated model structs
+model:
+  filename: internal/graphql/models_gen.go
+  package: graphql
+
+# Resolver generation configuration
+autobind:
+  - "demo-go/internal/domain"
+
+# Custom scalar mappings
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Time:
+    model:
+      - time.Time
+  User:
+    model: demo-go/internal/domain.UserResponse
+    fields:
+      id:
+        resolver: false
+      name:
+        resolver: false
+      email:
+        resolver: false
+      createdAt:
+        resolver: false
+      updatedAt:
+        resolver: false
+
+# Skip generating resolvers for these fields (they map directly to model fields)
+skip_resolver:
+  - User.id
+  - User.name
+  - User.email
+  - User.createdAt
+  - User.updatedAt

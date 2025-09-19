@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: demo-go-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: ""
+    startCommand: ""
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REDIS_ADDRESS
+        fromService:
+          type: redis
+          name: demo-go-redis
+          property: connectionString
+      - key: MONGODB_URI
+        fromDatabase:
+          name: demo-go-mongodb
+          property: connectionString
+      - key: CACHE_TYPE
+        value: redis
+      - key: REPOSITORY_TYPE
+        value: mongodb
+    autoDeploy: false
+
+databases:
+  - name: demo-go-mongodb
+    databaseName: demo_go_production
+    user: demo_go_user
+    region: oregon
+    plan: starter
+
+services:
+  - type: redis
+    name: demo-go-redis
+    region: oregon
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
