@@ -92,7 +92,7 @@ jobs:
         name: codecov-umbrella
 
     - name: Upload coverage artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-report
         path: coverage.html
@@ -193,7 +193,7 @@ jobs:
         output-file: sbom.spdx.json
 
     - name: Upload SBOM artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: sbom
         path: sbom.spdx.json
@@ -292,7 +292,7 @@ jobs:
         BASE_URL: ${{ secrets.STAGING_HEALTH_URL }}
 
     - name: Upload performance test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: performance-test-results
