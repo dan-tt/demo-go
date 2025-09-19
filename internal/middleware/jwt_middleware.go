@@ -72,7 +72,8 @@ func (m *JWTMiddleware) RequireRole(role string) func(http.Handler) http.Handler
 				return
 			}
 
-			if userRole.(string) != role {
+			roleStr, ok := userRole.(string)
+			if !ok || roleStr != role {
 				m.writeForbiddenResponse(w, "Insufficient permissions")
 				return
 			}
@@ -129,5 +130,5 @@ func (m *JWTMiddleware) writeJSONError(w http.ResponseWriter, statusCode int, me
 		}
 	}`
 
-	w.Write([]byte(response))
+	_, _ = w.Write([]byte(response))
 }

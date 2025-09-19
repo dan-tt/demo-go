@@ -1,3 +1,5 @@
+// Package service provides business logic implementations for the demo-go application.
+// It includes user management services, JWT token services, and caching functionality.
 package service
 
 import (

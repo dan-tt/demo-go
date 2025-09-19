@@ -98,7 +98,7 @@ type TokenClaims struct {
 	Iat    int64  `json:"iat"`
 }
 
-// Common errors
+// DomainError represents a domain-specific error with a code and message.
 type DomainError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`

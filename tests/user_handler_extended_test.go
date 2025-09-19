@@ -14,6 +14,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const testUserID = "test-user-1"
+
 func TestUserHandler_UpdateProfile(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -25,7 +27,7 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 	}{
 		{
 			name:   "successful profile update",
-			userID: "test-user-1",
+			userID: testUserID,
 			requestBody: domain.UpdateUserRequest{
 				Name: stringPtr("Updated Name"),
 			},
@@ -51,7 +53,7 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 		},
 		{
 			name:   "update with duplicate email",
-			userID: "test-user-1",
+			userID: testUserID,
 			requestBody: domain.UpdateUserRequest{
 				Email: stringPtr("existing@example.com"),
 			},
@@ -299,10 +301,10 @@ func TestUserHandler_GetUserByID(t *testing.T) {
 	}{
 		{
 			name:   "successful get user by ID",
-			userID: "test-user-1",
+			userID: testUserID,
 			mockSetup: func(m *mockUserService) {
 				m.getUserByIDFunc = func(ctx context.Context, id string) (*domain.UserResponse, error) {
-					if id == "test-user-1" {
+					if id == testUserID {
 						return testUser, nil
 					}
 					return nil, domain.ErrUserNotFound
@@ -314,7 +316,7 @@ func TestUserHandler_GetUserByID(t *testing.T) {
 					t.Error("Expected success to be true")
 				}
 				data := body["data"].(map[string]interface{})
-				if data["id"].(string) != "test-user-1" {
+				if data["id"].(string) != testUserID {
 					t.Error("Expected correct user ID in response")
 				}
 			},
@@ -407,10 +409,10 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 	}{
 		{
 			name:   "successful user deletion",
-			userID: "test-user-1",
+			userID: testUserID,
 			mockSetup: func(m *mockUserService) {
 				m.deleteUserFunc = func(ctx context.Context, id string) error {
-					if id == "test-user-1" {
+					if id == testUserID {
 						return nil
 					}
 					return domain.ErrUserNotFound
@@ -514,10 +516,10 @@ func TestUserHandler_RefreshToken(t *testing.T) {
 	}{
 		{
 			name:   "successful token refresh",
-			userID: "test-user-1",
+			userID: testUserID,
 			mockSetup: func(m *mockUserService) {
 				m.refreshTokenFunc = func(ctx context.Context, userID string) (string, error) {
-					if userID == "test-user-1" {
+					if userID == testUserID {
 						return "new-jwt-token-456", nil
 					}
 					return "", domain.ErrUserNotFound

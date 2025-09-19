@@ -137,7 +137,9 @@ func (r *mongoUserRepository) Update(ctx context.Context, id string, user *domai
 
 	// Only update password if it's provided
 	if user.Password != "" {
-		update["$set"].(bson.M)["password"] = user.Password
+		if setMap, ok := update["$set"].(bson.M); ok {
+			setMap["password"] = user.Password
+		}
 	}
 
 	result, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
@@ -186,7 +188,12 @@ func (r *mongoUserRepository) List(ctx context.Context, limit, offset int) ([]*d
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			// Log the error but don't fail the operation
+			// since the main operation was successful
+		}
+	}()
 
 	var users []*domain.User
 	for cursor.Next(ctx) {
@@ -223,8 +230,12 @@ func NewMongoClient(cfg *config.Config) (*mongo.Client, error) {
 	defer cancel()
 
 	clientOptions := options.Client().
-		ApplyURI(cfg.Database.MongoDB.URI).
-		SetMaxPoolSize(uint64(cfg.Database.MongoDB.MaxPoolSize))
+		ApplyURI(cfg.Database.MongoDB.URI)
+
+	// Safely convert int to uint64 for MaxPoolSize
+	if cfg.Database.MongoDB.MaxPoolSize > 0 {
+		clientOptions = clientOptions.SetMaxPoolSize(uint64(cfg.Database.MongoDB.MaxPoolSize))
+	}
 
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {

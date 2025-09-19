@@ -1,3 +1,6 @@
+// Package routes provides HTTP route configuration and middleware setup
+// for the demo-go application. It includes route groups for authentication,
+// user management, admin functionality, and health checks.
 package routes
 
 import (

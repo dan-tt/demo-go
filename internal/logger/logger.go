@@ -173,13 +173,17 @@ func InitGlobal(config *Config) error {
 func GetGlobal() *Logger {
 	if globalLogger == nil {
 		// Fallback to default logger if not initialized
-		logger, _ := NewDefault()
+		logger, err := NewDefault()
+		if err != nil {
+			// Fallback to a basic logger if NewDefault fails
+			panic("Failed to create default logger: " + err.Error())
+		}
 		globalLogger = logger
 	}
 	return globalLogger
 }
 
-// Convenience functions for global logger
+// Debug logs a debug-level message using the global logger instance.
 func Debug(args ...interface{}) {
 	GetGlobal().Debug(args...)
 }

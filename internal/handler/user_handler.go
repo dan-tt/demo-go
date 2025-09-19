@@ -284,7 +284,11 @@ func (h *UserHandler) writeSuccessResponse(w http.ResponseWriter, statusCode int
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// If we can't encode the response, there's not much we can do
+		// The status code has already been set
+		return
+	}
 }
 
 func (h *UserHandler) writeErrorResponse(w http.ResponseWriter, statusCode int, message, code string) {
@@ -298,7 +302,11 @@ func (h *UserHandler) writeErrorResponse(w http.ResponseWriter, statusCode int, 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// If we can't encode the response, there's not much we can do
+		// The status code has already been set
+		return
+	}
 }
 
 // Helper methods

@@ -1,3 +1,6 @@
+// Package graphql provides GraphQL schema definitions and resolvers
+// for the demo-go application, implementing user management operations
+// through a GraphQL API interface.
 package graphql
 
 import (
@@ -269,14 +272,4 @@ func (r *subscriptionResolver) UserDeleted(ctx context.Context) (<-chan string, 
 // containsIgnoreCase checks if the haystack contains the needle (case-insensitive)
 func containsIgnoreCase(haystack, needle string) bool {
 	return strings.Contains(strings.ToLower(haystack), strings.ToLower(needle))
-}
-
-// stringPtr returns a pointer to the given string
-func stringPtr(s string) *string {
-	return &s
-}
-
-// intPtr returns a pointer to the given int
-func intPtr(i int) *int {
-	return &i
 }
