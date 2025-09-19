@@ -1,3 +1,5 @@
+// Package cache provides caching functionality for the demo-go application
+// using Redis as the backend cache store with configurable TTL and operations.
 package cache
 
 import (

@@ -1,3 +1,5 @@
+// Package handler provides HTTP request handlers for the demo-go application,
+// implementing RESTful endpoints for user management, authentication, and admin operations.
 package handler
 
 import (

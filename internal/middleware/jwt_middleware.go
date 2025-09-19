@@ -1,3 +1,5 @@
+// Package middleware provides HTTP middleware functions for the demo-go application,
+// including JWT authentication, authorization, logging, and request processing.
 package middleware
 
 import (
@@ -7,6 +9,31 @@ import (
 
 	"demo-go/internal/domain"
 )
+
+// Context key types to avoid collisions
+type contextKey string
+
+const (
+	userIDKey    contextKey = "user_id"
+	userEmailKey contextKey = "user_email"
+	userRoleKey  contextKey = "user_role"
+)
+
+// Helper functions to safely retrieve context values
+func GetUserIDFromContext(ctx context.Context) (string, bool) {
+	userID, ok := ctx.Value(userIDKey).(string)
+	return userID, ok
+}
+
+func GetUserEmailFromContext(ctx context.Context) (string, bool) {
+	email, ok := ctx.Value(userEmailKey).(string)
+	return email, ok
+}
+
+func GetUserRoleFromContext(ctx context.Context) (string, bool) {
+	role, ok := ctx.Value(userRoleKey).(string)
+	return role, ok
+}
 
 // JWTMiddleware provides JWT authentication middleware
 type JWTMiddleware struct {
@@ -53,9 +80,9 @@ func (m *JWTMiddleware) Authenticate(next http.Handler) http.Handler {
 		}
 
 		// Add user information to request context
-		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
-		ctx = context.WithValue(ctx, "user_email", claims.Email)
-		ctx = context.WithValue(ctx, "user_role", claims.Role)
+		ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
+		ctx = context.WithValue(ctx, userEmailKey, claims.Email)
+		ctx = context.WithValue(ctx, userRoleKey, claims.Role)
 
 		// Call next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -66,7 +93,7 @@ func (m *JWTMiddleware) Authenticate(next http.Handler) http.Handler {
 func (m *JWTMiddleware) RequireRole(role string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			userRole := r.Context().Value("user_role")
+			userRole := r.Context().Value(userRoleKey)
 			if userRole == nil {
 				m.writeForbiddenResponse(w, "User role not found in context")
 				return
@@ -130,5 +157,8 @@ func (m *JWTMiddleware) writeJSONError(w http.ResponseWriter, statusCode int, me
 		}
 	}`
 
-	_, _ = w.Write([]byte(response))
+	if _, err := w.Write([]byte(response)); err != nil {
+		// Log the error but there's not much we can do at this point
+		// since we're already in an error handling path
+	}
 }

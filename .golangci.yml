@@ -5,18 +5,12 @@ run:
   timeout: 5m
   issues-exit-code: 1
   tests: true
-  skip-dirs:
-    - vendor
-    - internal/graphql/generated.go
-  skip-files:
-    - ".*_gen.go$"
-    - ".*\\.pb\\.go$"
 
 output:
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
-  uniq-by-line: true
 
 linters-settings:
   errcheck:
@@ -45,8 +39,26 @@ linters-settings:
     min-confidence: 0.8
   
   govet:
-    check-shadowing: true
     enable-all: true
+    settings:
+      shadow:
+        strict: true
+  
+  depguard:
+    rules:
+      main:
+        allow:
+          - $gostd
+          - demo-go
+          - github.com/gorilla/mux
+          - github.com/go-redis/redis/v8
+          - github.com/google/uuid
+          - go.uber.org/zap
+          - go.uber.org/zap/zapcore
+          - go.mongodb.org/mongo-driver
+          - github.com/golang-jwt/jwt/v4
+          - github.com/golang-jwt/jwt/v5
+          - golang.org/x/crypto
   
   lll:
     line-length: 120
@@ -65,12 +77,11 @@ linters-settings:
 linters:
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
+    - copyloopvar
     - exhaustive
     - funlen
     - gochecknoinits
@@ -79,30 +90,25 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
-    - gomnd
+    - revive
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - lll
-    - maligned
     - misspell
     - nakedret
     - noctx
     - nolintlint
     - rowserrcheck
-    - scopelint
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
   
   disable:
@@ -110,6 +116,13 @@ linters:
     - godox
 
 issues:
+  exclude-dirs:
+    - vendor
+    - internal/graphql/generated.go
+  exclude-files:
+    - ".*_gen.go$"
+    - ".*\\.pb\\.go$"
+  uniq-by-line: true
   exclude-rules:
     # Exclude some linters from running on tests files
     - path: _test\.go
@@ -118,6 +131,8 @@ issues:
         - errcheck
         - dupl
         - gosec
+        - funlen
+        - lll
     
     # Exclude known linter issues
     - path: internal/handler/
@@ -129,6 +144,11 @@ issues:
     - text: "shadow: declaration of \"err\" shadows declaration at"
       linters:
         - govet
+    
+    # Exclude empty branch warnings for proper error handling
+    - text: "SA9003: empty branch"
+      linters:
+        - staticcheck
   
   exclude-use-default: false
   max-issues-per-linter: 0

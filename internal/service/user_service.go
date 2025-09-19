@@ -137,7 +137,11 @@ func (s *userService) GetProfile(ctx context.Context, userID string) (*domain.Us
 }
 
 // UpdateProfile updates user profile
-func (s *userService) UpdateProfile(ctx context.Context, userID string, req *domain.UpdateUserRequest) (*domain.UserResponse, error) {
+func (s *userService) UpdateProfile(
+	ctx context.Context,
+	userID string,
+	req *domain.UpdateUserRequest,
+) (*domain.UserResponse, error) {
 	// Get existing user
 	existingUser, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {

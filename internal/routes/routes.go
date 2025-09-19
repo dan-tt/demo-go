@@ -25,7 +25,11 @@ type Router struct {
 }
 
 // NewRouter creates a new router instance with dependencies
-func NewRouter(userHandler *handler.UserHandler, jwtMiddleware *middleware.JWTMiddleware, logger *logger.Logger) *Router {
+func NewRouter(
+	userHandler *handler.UserHandler,
+	jwtMiddleware *middleware.JWTMiddleware,
+	logger *logger.Logger,
+) *Router {
 	return &Router{
 		userHandler:   userHandler,
 		jwtMiddleware: jwtMiddleware,

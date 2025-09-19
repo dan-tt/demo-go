@@ -10,6 +10,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// Context key types to avoid collisions
+type loggingContextKey string
+
+const (
+	requestIDKey loggingContextKey = "request_id"
+)
+
 // LoggingMiddleware provides request logging with structured output
 func LoggingMiddleware(baseLogger *logger.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -66,7 +73,7 @@ func generateRequestID(r *http.Request) string {
 
 // requestIDContext adds request ID to context
 func requestIDContext(ctx context.Context, requestID string) context.Context {
-	return context.WithValue(ctx, "request_id", requestID)
+	return context.WithValue(ctx, requestIDKey, requestID)
 }
 
 // responseWriterWrapper wraps http.ResponseWriter to capture status code and response size

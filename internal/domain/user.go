@@ -1,3 +1,5 @@
+// Package domain defines the core business entities, interfaces, and domain logic
+// for the demo-go application, including user management and authentication.
 package domain
 
 import (

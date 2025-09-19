@@ -173,7 +173,11 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input CreateUserInput
 }
 
 // UpdateUser resolves the updateUser mutation
-func (r *mutationResolver) UpdateUser(ctx context.Context, id string, input UpdateUserInput) (*domain.UserResponse, error) {
+func (r *mutationResolver) UpdateUser(
+	ctx context.Context,
+	id string,
+	input UpdateUserInput,
+) (*domain.UserResponse, error) {
 	log := r.logger.ForService("mutation", "updateUser").WithField("user_id", id)
 
 	log.Debug("Resolving updateUser mutation")

@@ -18,7 +18,11 @@ type cachedUserService struct {
 }
 
 // NewCachedUserService creates a new cached user service wrapper
-func NewCachedUserService(userService domain.UserService, cacheService cache.CacheService, cacheTTL time.Duration) domain.UserService {
+func NewCachedUserService(
+	userService domain.UserService,
+	cacheService cache.CacheService,
+	cacheTTL time.Duration,
+) domain.UserService {
 	return &cachedUserService{
 		userService: userService,
 		cache:       cacheService,
@@ -72,44 +76,54 @@ func (s *cachedUserService) Login(ctx context.Context, req *domain.LoginRequest)
 }
 
 // GetProfile retrieves a user profile (cache-enabled)
-func (s *cachedUserService) GetProfile(ctx context.Context, userID string) (*domain.UserResponse, error) {
-	log := s.logger.ForService("user", "get-profile").WithField("user_id", userID)
+// getUserWithCache is a helper function to get user data with caching logic
+func (s *cachedUserService) getUserWithCache(ctx context.Context, userID, operation string,
+	serviceCall func(context.Context, string) (*domain.UserResponse, error)) (*domain.UserResponse, error) {
 
-	log.Debug("Getting user profile")
+	log := s.logger.ForService("user", operation).WithField("user_id", userID)
+	log.Debug("Getting user with cache")
 
 	// Try to get from cache first
 	user, err := s.cache.GetUser(ctx, userID)
 	if err == nil {
-		log.Debug("User profile cache hit")
+		log.Debug("User cache hit")
 		return user, nil
 	}
 
 	// Cache miss or error - check if it's a real miss vs error
 	if err != domain.ErrUserNotFound {
-		log.Warn("Cache error when getting user profile", "error", err)
+		log.Warn("Cache error when getting user", "error", err)
 	} else {
-		log.Debug("User profile cache miss")
+		log.Debug("User cache miss")
 	}
 
 	// Get from underlying service
-	user, err = s.userService.GetProfile(ctx, userID)
+	user, err = serviceCall(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Cache the result
 	if cacheErr := s.cache.SetUser(ctx, userID, user, s.cacheTTL); cacheErr != nil {
-		log.Warn("Failed to cache user profile", "user_id", userID, "error", cacheErr)
+		log.Warn("Failed to cache user", "user_id", userID, "error", cacheErr)
 		// Don't fail the operation if caching fails
 	} else {
-		log.Debug("Cached user profile", "user_id", userID)
+		log.Debug("Cached user", "user_id", userID)
 	}
 
 	return user, nil
 }
 
+func (s *cachedUserService) GetProfile(ctx context.Context, userID string) (*domain.UserResponse, error) {
+	return s.getUserWithCache(ctx, userID, "get-profile", s.userService.GetProfile)
+}
+
 // UpdateProfile updates a user profile and invalidates cache
-func (s *cachedUserService) UpdateProfile(ctx context.Context, userID string, req *domain.UpdateUserRequest) (*domain.UserResponse, error) {
+func (s *cachedUserService) UpdateProfile(
+	ctx context.Context,
+	userID string,
+	req *domain.UpdateUserRequest,
+) (*domain.UserResponse, error) {
 	log := s.logger.ForService("user", "update-profile").WithField("user_id", userID)
 
 	log.Debug("Updating user profile")
@@ -172,39 +186,7 @@ func (s *cachedUserService) GetUsers(ctx context.Context, limit, offset int) ([]
 
 // GetUserByID retrieves a user by ID (cache-enabled)
 func (s *cachedUserService) GetUserByID(ctx context.Context, id string) (*domain.UserResponse, error) {
-	log := s.logger.ForService("user", "get-by-id").WithField("user_id", id)
-
-	log.Debug("Getting user by ID")
-
-	// Try to get from cache first
-	user, err := s.cache.GetUser(ctx, id)
-	if err == nil {
-		log.Debug("User cache hit")
-		return user, nil
-	}
-
-	// Cache miss or error - check if it's a real miss vs error
-	if err != domain.ErrUserNotFound {
-		log.Warn("Cache error when getting user by ID", "error", err)
-	} else {
-		log.Debug("User cache miss")
-	}
-
-	// Get from underlying service
-	user, err = s.userService.GetUserByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	// Cache the result
-	if cacheErr := s.cache.SetUser(ctx, id, user, s.cacheTTL); cacheErr != nil {
-		log.Warn("Failed to cache user", "user_id", id, "error", cacheErr)
-		// Don't fail the operation if caching fails
-	} else {
-		log.Debug("Cached user", "user_id", id)
-	}
-
-	return user, nil
+	return s.getUserWithCache(ctx, id, "get-by-id", s.userService.GetUserByID)
 }
 
 // DeleteUser deletes a user and invalidates cache

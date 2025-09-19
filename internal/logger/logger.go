@@ -1,3 +1,5 @@
+// Package logger provides structured logging functionality for the demo-go application
+// using zap as the underlying logging framework with configurable levels and formats.
 package logger
 
 import (

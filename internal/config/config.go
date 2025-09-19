@@ -1,3 +1,5 @@
+// Package config provides configuration management for the demo-go application,
+// loading settings from environment variables with sensible defaults.
 package config
 
 import (

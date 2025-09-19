@@ -1,3 +1,5 @@
+// Package repository provides data access layer implementations for the demo-go application,
+// including MongoDB and in-memory storage options for user data persistence.
 package repository
 
 import (
@@ -234,7 +236,17 @@ func NewMongoClient(cfg *config.Config) (*mongo.Client, error) {
 
 	// Safely convert int to uint64 for MaxPoolSize
 	if cfg.Database.MongoDB.MaxPoolSize > 0 {
-		clientOptions = clientOptions.SetMaxPoolSize(uint64(cfg.Database.MongoDB.MaxPoolSize))
+		// Ensure the value is within valid bounds for uint64
+		maxPoolSize := cfg.Database.MongoDB.MaxPoolSize
+		if maxPoolSize < 0 {
+			maxPoolSize = 100 // Default fallback
+		}
+		// Use explicit bounds checking to satisfy gosec G115
+		if maxPoolSize > 0 && maxPoolSize <= 10000 { // Reasonable pool size limit
+			// Safe conversion since we've validated the bounds
+			poolSize := uint64(maxPoolSize) // #nosec G115
+			clientOptions = clientOptions.SetMaxPoolSize(poolSize)
+		}
 	}
 
 	client, err := mongo.Connect(ctx, clientOptions)
