@@ -62,8 +62,8 @@ type ExecutableSchema interface {
 
 // ResponseData represents GraphQL response data
 type ResponseData struct {
-	Data   interface{}            `json:"data,omitempty"`
-	Errors []GraphQLError         `json:"errors,omitempty"`
+	Data       interface{}            `json:"data,omitempty"`
+	Errors     []GraphQLError         `json:"errors,omitempty"`
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 }
 

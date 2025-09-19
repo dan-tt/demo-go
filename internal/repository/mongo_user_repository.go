@@ -24,13 +24,13 @@ type mongoUserRepository struct {
 // NewMongoUserRepository creates a new MongoDB user repository
 func NewMongoUserRepository(client *mongo.Client, cfg *config.Config) domain.UserRepository {
 	log := logger.GetGlobal().ForComponent("mongo-repository")
-	
+
 	collection := client.Database(cfg.Database.MongoDB.Database).Collection("users")
-	
+
 	// Create unique index on email
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Database.MongoDB.Timeout)
 	defer cancel()
-	
+
 	log.Debug("Creating unique index on email field")
 	indexModel := mongo.IndexModel{
 		Keys:    bson.D{{Key: "email", Value: 1}},
@@ -42,7 +42,7 @@ func NewMongoUserRepository(client *mongo.Client, cfg *config.Config) domain.Use
 	} else {
 		log.Debug("Email index created successfully")
 	}
-	
+
 	return &mongoUserRepository{
 		collection: collection,
 		timeout:    cfg.Database.MongoDB.Timeout,
@@ -53,23 +53,23 @@ func NewMongoUserRepository(client *mongo.Client, cfg *config.Config) domain.Use
 // Create creates a new user in MongoDB
 func (r *mongoUserRepository) Create(ctx context.Context, user *domain.User) error {
 	log := r.logger.ForRepository("user", "create").WithField("email", user.Email)
-	
+
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	
+
 	log.Debug("Creating user in MongoDB")
-	
+
 	// Set creation time
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
-	
+
 	// If ID is empty, MongoDB will generate one
 	if user.ID == "" {
 		user.ID = primitive.NewObjectID().Hex()
 	}
-	
+
 	log.Debug("Inserting user document", "user_id", user.ID)
-	
+
 	_, err := r.collection.InsertOne(ctx, user)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
@@ -79,7 +79,7 @@ func (r *mongoUserRepository) Create(ctx context.Context, user *domain.User) err
 		log.Error("Failed to insert user", "error", err)
 		return err
 	}
-	
+
 	log.Info("User created successfully", "user_id", user.ID)
 	return nil
 }
@@ -88,7 +88,7 @@ func (r *mongoUserRepository) Create(ctx context.Context, user *domain.User) err
 func (r *mongoUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	
+
 	var user domain.User
 	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 	if err != nil {
@@ -97,7 +97,7 @@ func (r *mongoUserRepository) GetByID(ctx context.Context, id string) (*domain.U
 		}
 		return nil, err
 	}
-	
+
 	return &user, nil
 }
 
@@ -105,7 +105,7 @@ func (r *mongoUserRepository) GetByID(ctx context.Context, id string) (*domain.U
 func (r *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	
+
 	var user domain.User
 	err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
@@ -114,7 +114,7 @@ func (r *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*do
 		}
 		return nil, err
 	}
-	
+
 	return &user, nil
 }
 
@@ -122,10 +122,10 @@ func (r *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*do
 func (r *mongoUserRepository) Update(ctx context.Context, id string, user *domain.User) error {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	
+
 	// Set update time
 	user.UpdatedAt = time.Now()
-	
+
 	update := bson.M{
 		"$set": bson.M{
 			"name":       user.Name,
@@ -134,12 +134,12 @@ func (r *mongoUserRepository) Update(ctx context.Context, id string, user *domai
 			"updated_at": user.UpdatedAt,
 		},
 	}
-	
+
 	// Only update password if it's provided
 	if user.Password != "" {
 		update["$set"].(bson.M)["password"] = user.Password
 	}
-	
+
 	result, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
@@ -147,11 +147,11 @@ func (r *mongoUserRepository) Update(ctx context.Context, id string, user *domai
 		}
 		return err
 	}
-	
+
 	if result.MatchedCount == 0 {
 		return domain.ErrUserNotFound
 	}
-	
+
 	return nil
 }
 
@@ -159,16 +159,16 @@ func (r *mongoUserRepository) Update(ctx context.Context, id string, user *domai
 func (r *mongoUserRepository) Delete(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	
+
 	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
 		return err
 	}
-	
+
 	if result.DeletedCount == 0 {
 		return domain.ErrUserNotFound
 	}
-	
+
 	return nil
 }
 
@@ -176,18 +176,18 @@ func (r *mongoUserRepository) Delete(ctx context.Context, id string) error {
 func (r *mongoUserRepository) List(ctx context.Context, limit, offset int) ([]*domain.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	
+
 	opts := options.Find().
 		SetLimit(int64(limit)).
 		SetSkip(int64(offset)).
 		SetSort(bson.D{{Key: "created_at", Value: -1}})
-	
+
 	cursor, err := r.collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, err
 	}
 	defer cursor.Close(ctx)
-	
+
 	var users []*domain.User
 	for cursor.Next(ctx) {
 		var user domain.User
@@ -196,11 +196,11 @@ func (r *mongoUserRepository) List(ctx context.Context, limit, offset int) ([]*d
 		}
 		users = append(users, &user)
 	}
-	
+
 	if err := cursor.Err(); err != nil {
 		return nil, err
 	}
-	
+
 	return users, nil
 }
 
@@ -208,12 +208,12 @@ func (r *mongoUserRepository) List(ctx context.Context, limit, offset int) ([]*d
 func (r *mongoUserRepository) Count(ctx context.Context) (int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	
+
 	count, err := r.collection.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return count, nil
 }
 
@@ -221,20 +221,20 @@ func (r *mongoUserRepository) Count(ctx context.Context) (int64, error) {
 func NewMongoClient(cfg *config.Config) (*mongo.Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Database.MongoDB.Timeout)
 	defer cancel()
-	
+
 	clientOptions := options.Client().
 		ApplyURI(cfg.Database.MongoDB.URI).
 		SetMaxPoolSize(uint64(cfg.Database.MongoDB.MaxPoolSize))
-	
+
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Test the connection
 	if err := client.Ping(ctx, nil); err != nil {
 		return nil, err
 	}
-	
+
 	return client, nil
 }

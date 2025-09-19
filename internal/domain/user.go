@@ -109,11 +109,11 @@ func (e *DomainError) Error() string {
 }
 
 var (
-	ErrUserNotFound      = &DomainError{Code: "USER_NOT_FOUND", Message: "User not found"}
-	ErrUserAlreadyExists = &DomainError{Code: "USER_ALREADY_EXISTS", Message: "User with this email already exists"}
+	ErrUserNotFound       = &DomainError{Code: "USER_NOT_FOUND", Message: "User not found"}
+	ErrUserAlreadyExists  = &DomainError{Code: "USER_ALREADY_EXISTS", Message: "User with this email already exists"}
 	ErrInvalidCredentials = &DomainError{Code: "INVALID_CREDENTIALS", Message: "Invalid email or password"}
-	ErrInvalidToken      = &DomainError{Code: "INVALID_TOKEN", Message: "Invalid or expired token"}
-	ErrUnauthorized      = &DomainError{Code: "UNAUTHORIZED", Message: "Unauthorized access"}
-	ErrForbidden         = &DomainError{Code: "FORBIDDEN", Message: "Access forbidden"}
-	ErrValidationFailed  = &DomainError{Code: "VALIDATION_FAILED", Message: "Validation failed"}
+	ErrInvalidToken       = &DomainError{Code: "INVALID_TOKEN", Message: "Invalid or expired token"}
+	ErrUnauthorized       = &DomainError{Code: "UNAUTHORIZED", Message: "Unauthorized access"}
+	ErrForbidden          = &DomainError{Code: "FORBIDDEN", Message: "Access forbidden"}
+	ErrValidationFailed   = &DomainError{Code: "VALIDATION_FAILED", Message: "Validation failed"}
 )

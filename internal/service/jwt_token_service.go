@@ -29,7 +29,7 @@ func NewJWTTokenService(cfg *config.Config) domain.TokenService {
 func (s *jwtTokenService) GenerateToken(user *domain.User) (string, error) {
 	now := time.Now()
 	expirationTime := now.Add(s.expirationTime)
-	
+
 	claims := &jwt.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,
@@ -38,13 +38,13 @@ func (s *jwtTokenService) GenerateToken(user *domain.User) (string, error) {
 		"iat":     now.Unix(),
 		"iss":     s.issuer,
 	}
-	
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(s.secretKey)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return tokenString, nil
 }
 
@@ -57,46 +57,46 @@ func (s *jwtTokenService) ValidateToken(tokenString string) (*domain.TokenClaims
 		}
 		return s.secretKey, nil
 	})
-	
+
 	if err != nil {
 		return nil, domain.ErrInvalidToken
 	}
-	
+
 	if !token.Valid {
 		return nil, domain.ErrInvalidToken
 	}
-	
+
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return nil, domain.ErrInvalidToken
 	}
-	
+
 	// Extract claims
 	userID, ok := claims["user_id"].(string)
 	if !ok {
 		return nil, domain.ErrInvalidToken
 	}
-	
+
 	email, ok := claims["email"].(string)
 	if !ok {
 		return nil, domain.ErrInvalidToken
 	}
-	
+
 	role, ok := claims["role"].(string)
 	if !ok {
 		return nil, domain.ErrInvalidToken
 	}
-	
+
 	exp, ok := claims["exp"].(float64)
 	if !ok {
 		return nil, domain.ErrInvalidToken
 	}
-	
+
 	iat, ok := claims["iat"].(float64)
 	if !ok {
 		return nil, domain.ErrInvalidToken
 	}
-	
+
 	return &domain.TokenClaims{
 		UserID: userID,
 		Email:  email,
@@ -112,6 +112,6 @@ func (s *jwtTokenService) ExtractUserIDFromToken(tokenString string) (string, er
 	if err != nil {
 		return "", err
 	}
-	
+
 	return claims.UserID, nil
 }

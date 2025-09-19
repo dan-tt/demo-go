@@ -16,35 +16,35 @@ func LoggingMiddleware(baseLogger *logger.Logger) func(http.Handler) http.Handle
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			requestID := generateRequestID(r)
-			
+
 			// Create logger for this request
 			log := baseLogger.ForRequest(r.Method, r.URL.Path, requestID)
-			
+
 			// Add request ID to context for downstream use
 			ctx := r.Context()
 			ctx = requestIDContext(ctx, requestID)
 			r = r.WithContext(ctx)
-			
+
 			// Add request ID header to response
 			w.Header().Set("X-Request-ID", requestID)
-			
+
 			// Create a response writer wrapper to capture status code and size
 			wrapper := &responseWriterWrapper{
 				ResponseWriter: w,
 				statusCode:     http.StatusOK,
-				size:          0,
+				size:           0,
 			}
-			
+
 			// Log incoming request
 			log.Info("Request started",
 				"user_agent", r.UserAgent(),
 				"remote_addr", r.RemoteAddr,
 				"content_length", r.ContentLength,
 			)
-			
+
 			// Call next handler
 			next.ServeHTTP(wrapper, r)
-			
+
 			// Log completed request
 			duration := time.Since(start)
 			log.Info("Request completed",
@@ -93,13 +93,13 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		
+
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		
+
 		next.ServeHTTP(w, r)
 	})
 }

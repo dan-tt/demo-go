@@ -37,7 +37,7 @@ func (r *Router) GetAllRouteInfo() []RouteInfo {
 			Protected:   false,
 			AdminOnly:   false,
 		},
-		
+
 		// Auth routes
 		{
 			Method:      "POST",
@@ -63,7 +63,7 @@ func (r *Router) GetAllRouteInfo() []RouteInfo {
 			Protected:   false,
 			AdminOnly:   false,
 		},
-		
+
 		// User API routes
 		{
 			Method:      "GET",
@@ -81,7 +81,7 @@ func (r *Router) GetAllRouteInfo() []RouteInfo {
 			Protected:   true,
 			AdminOnly:   false,
 		},
-		
+
 		// Admin routes
 		{
 			Method:      "GET",
@@ -108,6 +108,6 @@ func (r *Router) GetAllRouteInfo() []RouteInfo {
 			AdminOnly:   true,
 		},
 	}
-	
+
 	return routes
 }

@@ -26,7 +26,7 @@ func (ar *AdminRoutes) SetupRoutes(router *mux.Router) {
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
 	adminRouter := apiRouter.PathPrefix("/admin").Subrouter()
 	adminRouter.Use(ar.jwtMiddleware.RequireAdmin)
-	
+
 	adminRouter.HandleFunc("/users", ar.userHandler.GetUsers).Methods("GET")
 	adminRouter.HandleFunc("/users/{id}", ar.userHandler.GetUserByID).Methods("GET")
 	adminRouter.HandleFunc("/users/{id}", ar.userHandler.DeleteUser).Methods("DELETE")

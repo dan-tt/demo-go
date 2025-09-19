@@ -21,7 +21,7 @@ func NewUserRoutes(userHandler *handler.UserHandler) *UserRoutes {
 // SetupRoutes configures user API routes (authenticated)
 func (ur *UserRoutes) SetupRoutes(router *mux.Router) {
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
-	
+
 	// User profile routes
 	apiRouter.HandleFunc("/profile", ur.userHandler.GetProfile).Methods("GET")
 	apiRouter.HandleFunc("/profile", ur.userHandler.UpdateProfile).Methods("PUT")

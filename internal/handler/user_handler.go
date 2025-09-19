@@ -28,23 +28,23 @@ func NewUserHandler(userService domain.UserService) *UserHandler {
 // Register handles user registration
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	log := h.logger.ForRequest(r.Method, r.URL.Path, h.getRequestID(r))
-	
+
 	var req domain.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Warn("Invalid request body for registration", "error", err)
 		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
-	
+
 	log.Info("User registration attempt", "email", req.Email)
-	
+
 	user, err := h.userService.Register(r.Context(), &req)
 	if err != nil {
 		log.Error("User registration failed", "email", req.Email, "error", err)
 		h.handleServiceError(w, err)
 		return
 	}
-	
+
 	log.Info("User registered successfully", "user_id", user.ID, "email", user.Email)
 	h.writeSuccessResponse(w, http.StatusCreated, "User registered successfully", user)
 }
@@ -52,53 +52,53 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 // Login handles user authentication
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	log := h.logger.ForRequest(r.Method, r.URL.Path, h.getRequestID(r))
-	
+
 	var req domain.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Warn("Invalid request body for login", "error", err)
 		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
-	
+
 	log.Info("User login attempt", "email", req.Email)
-	
+
 	token, user, err := h.userService.Login(r.Context(), &req)
 	if err != nil {
 		log.Error("User login failed", "email", req.Email, "error", err)
 		h.handleServiceError(w, err)
 		return
 	}
-	
+
 	log.Info("User logged in successfully", "user_id", user.ID, "email", user.Email)
-	
+
 	response := map[string]interface{}{
 		"token": token,
 		"user":  user,
 	}
-	
+
 	h.writeSuccessResponse(w, http.StatusOK, "Login successful", response)
 }
 
 // GetProfile handles getting user profile
 func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	log := h.logger.ForRequest(r.Method, r.URL.Path, h.getRequestID(r))
-	
+
 	userID := h.getUserIDFromContext(r)
 	if userID == "" {
 		log.Warn("Unauthorized profile access attempt")
 		h.writeErrorResponse(w, http.StatusUnauthorized, "Unauthorized", "User ID not found in context")
 		return
 	}
-	
+
 	log.Debug("Getting user profile", "user_id", userID)
-	
+
 	user, err := h.userService.GetProfile(r.Context(), userID)
 	if err != nil {
 		log.Error("Failed to get user profile", "user_id", userID, "error", err)
 		h.handleServiceError(w, err)
 		return
 	}
-	
+
 	log.Info("User profile retrieved successfully", "user_id", userID)
 	h.writeSuccessResponse(w, http.StatusOK, "Profile retrieved successfully", user)
 }
@@ -106,30 +106,30 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 // UpdateProfile handles updating user profile
 func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	log := h.logger.ForRequest(r.Method, r.URL.Path, h.getRequestID(r))
-	
+
 	userID := h.getUserIDFromContext(r)
 	if userID == "" {
 		log.Warn("Unauthorized profile update attempt")
 		h.writeErrorResponse(w, http.StatusUnauthorized, "Unauthorized", "User ID not found in context")
 		return
 	}
-	
+
 	var req domain.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Warn("Invalid request body for profile update", "user_id", userID, "error", err)
 		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
-	
+
 	log.Info("Profile update attempt", "user_id", userID)
-	
+
 	user, err := h.userService.UpdateProfile(r.Context(), userID, &req)
 	if err != nil {
 		log.Error("Profile update failed", "user_id", userID, "error", err)
 		h.handleServiceError(w, err)
 		return
 	}
-	
+
 	h.writeSuccessResponse(w, http.StatusOK, "Profile updated successfully", user)
 }
 
@@ -138,34 +138,34 @@ func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
-	
+
 	limit := 10 // default
 	if limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
 			limit = l
 		}
 	}
-	
+
 	offset := 0 // default
 	if offsetStr != "" {
 		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
 			offset = o
 		}
 	}
-	
+
 	users, total, err := h.userService.GetUsers(r.Context(), limit, offset)
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
 	}
-	
+
 	response := map[string]interface{}{
 		"users":  users,
 		"total":  total,
 		"limit":  limit,
 		"offset": offset,
 	}
-	
+
 	h.writeSuccessResponse(w, http.StatusOK, "Users retrieved successfully", response)
 }
 
@@ -173,18 +173,18 @@ func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["id"]
-	
+
 	if userID == "" {
 		h.writeErrorResponse(w, http.StatusBadRequest, "Missing user ID", "User ID is required")
 		return
 	}
-	
+
 	user, err := h.userService.GetUserByID(r.Context(), userID)
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
 	}
-	
+
 	h.writeSuccessResponse(w, http.StatusOK, "User retrieved successfully", user)
 }
 
@@ -192,18 +192,18 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["id"]
-	
+
 	if userID == "" {
 		h.writeErrorResponse(w, http.StatusBadRequest, "Missing user ID", "User ID is required")
 		return
 	}
-	
+
 	err := h.userService.DeleteUser(r.Context(), userID)
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
 	}
-	
+
 	h.writeSuccessResponse(w, http.StatusOK, "User deleted successfully", nil)
 }
 
@@ -214,17 +214,17 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		h.writeErrorResponse(w, http.StatusUnauthorized, "Unauthorized", "User ID not found in context")
 		return
 	}
-	
+
 	token, err := h.userService.RefreshToken(r.Context(), userID)
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
 	}
-	
+
 	response := map[string]string{
 		"token": token,
 	}
-	
+
 	h.writeSuccessResponse(w, http.StatusOK, "Token refreshed successfully", response)
 }
 
@@ -235,7 +235,7 @@ func (h *UserHandler) Health(w http.ResponseWriter, r *http.Request) {
 		"service":   "clean-architecture-api",
 		"timestamp": "2025-09-18T00:00:00Z",
 	}
-	
+
 	h.writeSuccessResponse(w, http.StatusOK, "Service is healthy", response)
 }
 
@@ -281,7 +281,7 @@ func (h *UserHandler) writeSuccessResponse(w http.ResponseWriter, statusCode int
 		"message": message,
 		"data":    data,
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(response)
@@ -295,7 +295,7 @@ func (h *UserHandler) writeErrorResponse(w http.ResponseWriter, statusCode int, 
 			"code": code,
 		},
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(response)

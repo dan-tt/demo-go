@@ -13,7 +13,7 @@ type Router struct {
 	userHandler   *handler.UserHandler
 	jwtMiddleware *middleware.JWTMiddleware
 	logger        *logger.Logger
-	
+
 	// Route groups
 	healthRoutes *HealthRoutes
 	authRoutes   *AuthRoutes
@@ -27,7 +27,7 @@ func NewRouter(userHandler *handler.UserHandler, jwtMiddleware *middleware.JWTMi
 		userHandler:   userHandler,
 		jwtMiddleware: jwtMiddleware,
 		logger:        logger,
-		
+
 		// Initialize route groups
 		healthRoutes: NewHealthRoutes(userHandler),
 		authRoutes:   NewAuthRoutes(userHandler),
@@ -57,9 +57,9 @@ func (r *Router) SetupRoutes() *mux.Router {
 // GetRoutesSummary returns a summary of all available routes
 func (r *Router) GetRoutesSummary() map[string][]string {
 	return map[string][]string{
-		"Health Routes":        r.healthRoutes.GetRoutes(),
+		"Health Routes":         r.healthRoutes.GetRoutes(),
 		"Authentication Routes": r.authRoutes.GetRoutes(),
-		"User API Routes":      r.userRoutes.GetRoutes(),
-		"Admin Routes":         r.adminRoutes.GetRoutes(),
+		"User API Routes":       r.userRoutes.GetRoutes(),
+		"Admin Routes":          r.adminRoutes.GetRoutes(),
 	}
 }

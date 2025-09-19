@@ -18,11 +18,11 @@ type JWTMiddleware struct {
 func NewJWTMiddleware(tokenService domain.TokenService) *JWTMiddleware {
 	// Define paths that should skip authentication
 	skipPaths := map[string]bool{
-		"/health":         true,
-		"/auth/register":  true,
-		"/auth/login":     true,
+		"/health":        true,
+		"/auth/register": true,
+		"/auth/login":    true,
 	}
-	
+
 	return &JWTMiddleware{
 		tokenService: tokenService,
 		skipPaths:    skipPaths,
@@ -37,26 +37,26 @@ func (m *JWTMiddleware) Authenticate(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		
+
 		// Extract token from Authorization header
 		tokenString := m.extractTokenFromHeader(r)
 		if tokenString == "" {
 			m.writeUnauthorizedResponse(w, "Missing or invalid Authorization header")
 			return
 		}
-		
+
 		// Validate token
 		claims, err := m.tokenService.ValidateToken(tokenString)
 		if err != nil {
 			m.writeUnauthorizedResponse(w, "Invalid or expired token")
 			return
 		}
-		
+
 		// Add user information to request context
 		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
 		ctx = context.WithValue(ctx, "user_email", claims.Email)
 		ctx = context.WithValue(ctx, "user_role", claims.Role)
-		
+
 		// Call next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -71,12 +71,12 @@ func (m *JWTMiddleware) RequireRole(role string) func(http.Handler) http.Handler
 				m.writeForbiddenResponse(w, "User role not found in context")
 				return
 			}
-			
+
 			if userRole.(string) != role {
 				m.writeForbiddenResponse(w, "Insufficient permissions")
 				return
 			}
-			
+
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -98,13 +98,13 @@ func (m *JWTMiddleware) extractTokenFromHeader(r *http.Request) string {
 	if authHeader == "" {
 		return ""
 	}
-	
+
 	// Check if header starts with "Bearer "
 	const bearerPrefix = "Bearer "
 	if !strings.HasPrefix(authHeader, bearerPrefix) {
 		return ""
 	}
-	
+
 	// Extract token part
 	return strings.TrimSpace(authHeader[len(bearerPrefix):])
 }
@@ -120,7 +120,7 @@ func (m *JWTMiddleware) writeForbiddenResponse(w http.ResponseWriter, message st
 func (m *JWTMiddleware) writeJSONError(w http.ResponseWriter, statusCode int, message, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	response := `{
 		"success": false,
 		"message": "` + message + `",
@@ -128,6 +128,6 @@ func (m *JWTMiddleware) writeJSONError(w http.ResponseWriter, statusCode int, me
 			"code": "` + code + `"
 		}
 	}`
-	
+
 	w.Write([]byte(response))
 }

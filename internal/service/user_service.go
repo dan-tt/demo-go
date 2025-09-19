@@ -30,15 +30,15 @@ func NewUserService(userRepo domain.UserRepository, tokenService domain.TokenSer
 // Register creates a new user account
 func (s *userService) Register(ctx context.Context, req *domain.CreateUserRequest) (*domain.UserResponse, error) {
 	log := s.logger.ForService("user", "register").WithField("email", req.Email)
-	
+
 	log.Debug("Starting user registration")
-	
+
 	// Validate request
 	if err := s.validateCreateUserRequest(req); err != nil {
 		log.Warn("User registration validation failed", "error", err)
 		return nil, err
 	}
-	
+
 	// Check if user already exists
 	log.Debug("Checking if user already exists")
 	existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
@@ -50,7 +50,7 @@ func (s *userService) Register(ctx context.Context, req *domain.CreateUserReques
 		log.Warn("User already exists")
 		return nil, domain.ErrUserAlreadyExists
 	}
-	
+
 	// Hash password
 	log.Debug("Hashing password")
 	hashedPassword, err := s.hashPassword(req.Password)
@@ -58,15 +58,15 @@ func (s *userService) Register(ctx context.Context, req *domain.CreateUserReques
 		log.Error("Failed to hash password", "error", err)
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
-	
+
 	// Set default role if not provided
 	role := req.Role
 	if role == "" {
 		role = "user"
 	}
-	
+
 	log.Debug("Creating user entity", "role", role)
-	
+
 	// Create user entity
 	user := &domain.User{
 		Name:     strings.TrimSpace(req.Name),
@@ -74,14 +74,14 @@ func (s *userService) Register(ctx context.Context, req *domain.CreateUserReques
 		Password: hashedPassword,
 		Role:     role,
 	}
-	
+
 	// Save user
 	log.Debug("Saving user to repository")
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		log.Error("Failed to create user in repository", "error", err)
 		return nil, err
 	}
-	
+
 	log.Info("User registered successfully", "user_id", user.ID)
 	return user.ToResponse(), nil
 }
@@ -89,15 +89,15 @@ func (s *userService) Register(ctx context.Context, req *domain.CreateUserReques
 // Login authenticates a user and returns a JWT token
 func (s *userService) Login(ctx context.Context, req *domain.LoginRequest) (string, *domain.UserResponse, error) {
 	log := s.logger.ForService("user", "login").WithField("email", req.Email)
-	
+
 	log.Debug("Starting user login")
-	
+
 	// Validate request
 	if err := s.validateLoginRequest(req); err != nil {
 		log.Warn("Login validation failed", "error", err)
 		return "", nil, err
 	}
-	
+
 	// Get user by email
 	log.Debug("Looking up user by email")
 	user, err := s.userRepo.GetByEmail(ctx, strings.ToLower(strings.TrimSpace(req.Email)))
@@ -109,18 +109,18 @@ func (s *userService) Login(ctx context.Context, req *domain.LoginRequest) (stri
 		log.Error("Error retrieving user", "error", err)
 		return "", nil, err
 	}
-	
+
 	// Verify password
 	if err := s.verifyPassword(user.Password, req.Password); err != nil {
 		return "", nil, domain.ErrInvalidCredentials
 	}
-	
+
 	// Generate token
 	token, err := s.tokenService.GenerateToken(user)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to generate token: %w", err)
 	}
-	
+
 	return token, user.ToResponse(), nil
 }
 
@@ -130,7 +130,7 @@ func (s *userService) GetProfile(ctx context.Context, userID string) (*domain.Us
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return user.ToResponse(), nil
 }
 
@@ -141,20 +141,20 @@ func (s *userService) UpdateProfile(ctx context.Context, userID string, req *dom
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Validate update request
 	if err := s.validateUpdateUserRequest(req); err != nil {
 		return nil, err
 	}
-	
+
 	// Prepare updated user
 	updatedUser := *existingUser
-	
+
 	// Update fields if provided
 	if req.Name != nil {
 		updatedUser.Name = strings.TrimSpace(*req.Name)
 	}
-	
+
 	if req.Email != nil {
 		newEmail := strings.ToLower(strings.TrimSpace(*req.Email))
 		if newEmail != existingUser.Email {
@@ -169,16 +169,16 @@ func (s *userService) UpdateProfile(ctx context.Context, userID string, req *dom
 		}
 		updatedUser.Email = newEmail
 	}
-	
+
 	if req.Role != nil {
 		updatedUser.Role = *req.Role
 	}
-	
+
 	// Update user
 	if err := s.userRepo.Update(ctx, userID, &updatedUser); err != nil {
 		return nil, err
 	}
-	
+
 	return updatedUser.ToResponse(), nil
 }
 
@@ -194,23 +194,23 @@ func (s *userService) GetUsers(ctx context.Context, limit, offset int) ([]*domai
 	if offset < 0 {
 		offset = 0
 	}
-	
+
 	users, err := s.userRepo.List(ctx, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	count, err := s.userRepo.Count(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	// Convert to response format
 	var userResponses []*domain.UserResponse
 	for _, user := range users {
 		userResponses = append(userResponses, user.ToResponse())
 	}
-	
+
 	return userResponses, count, nil
 }
 
@@ -220,7 +220,7 @@ func (s *userService) GetUserByID(ctx context.Context, id string) (*domain.UserR
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return user.ToResponse(), nil
 }
 
@@ -235,12 +235,12 @@ func (s *userService) RefreshToken(ctx context.Context, userID string) (string, 
 	if err != nil {
 		return "", err
 	}
-	
+
 	token, err := s.tokenService.GenerateToken(user)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
-	
+
 	return token, nil
 }
 
@@ -250,23 +250,23 @@ func (s *userService) validateCreateUserRequest(req *domain.CreateUserRequest) e
 	if strings.TrimSpace(req.Name) == "" {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Name is required"}
 	}
-	
+
 	if len(strings.TrimSpace(req.Name)) < 2 {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Name must be at least 2 characters long"}
 	}
-	
+
 	if strings.TrimSpace(req.Email) == "" {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Email is required"}
 	}
-	
+
 	if !s.isValidEmail(req.Email) {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
 	}
-	
+
 	if len(req.Password) < 6 {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Password must be at least 6 characters long"}
 	}
-	
+
 	return nil
 }
 
@@ -274,11 +274,11 @@ func (s *userService) validateLoginRequest(req *domain.LoginRequest) error {
 	if strings.TrimSpace(req.Email) == "" {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Email is required"}
 	}
-	
+
 	if req.Password == "" {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Password is required"}
 	}
-	
+
 	return nil
 }
 
@@ -286,11 +286,11 @@ func (s *userService) validateUpdateUserRequest(req *domain.UpdateUserRequest) e
 	if req.Name != nil && len(strings.TrimSpace(*req.Name)) < 2 {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Name must be at least 2 characters long"}
 	}
-	
+
 	if req.Email != nil && !s.isValidEmail(*req.Email) {
 		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
 	}
-	
+
 	return nil
 }
 

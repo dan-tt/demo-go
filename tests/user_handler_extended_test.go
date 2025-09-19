@@ -99,7 +99,7 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 				t.Fatalf("Failed to marshal request body: %v", err)
 			}
 
-			req := httptest.NewRequest(http.MethodPUT, "/api/v1/profile", bytes.NewBuffer(body))
+			req := httptest.NewRequest(http.MethodPut, "/api/v1/profile", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
 
 			// Add user ID to context if provided
@@ -142,7 +142,7 @@ func TestUserHandler_GetUsers(t *testing.T) {
 		checkResponse  func(t *testing.T, body map[string]interface{})
 	}{
 		{
-			name: "successful get users with default pagination",
+			name:        "successful get users with default pagination",
 			queryParams: map[string]string{},
 			mockSetup: func(m *mockUserService) {
 				m.getUsersFunc = func(ctx context.Context, limit, offset int) ([]*domain.UserResponse, int64, error) {
@@ -364,7 +364,7 @@ func TestUserHandler_GetUserByID(t *testing.T) {
 
 			// Create request with mux vars
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+tt.userID, nil)
-			
+
 			// Setup mux vars
 			vars := map[string]string{}
 			if tt.userID != "" {
@@ -471,7 +471,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 
 			// Create request with mux vars
 			req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+tt.userID, nil)
-			
+
 			// Setup mux vars
 			vars := map[string]string{}
 			if tt.userID != "" {

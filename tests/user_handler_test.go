@@ -13,24 +13,11 @@ import (
 
 	"demo-go/internal/domain"
 	"demo-go/internal/handler"
-
-	"github.com/gorilla/mux"
 )
 
 // mockUserService implements domain.UserService for testing
 type mockUserService struct {
-	r			checkResponse: func(t *testing.T, body map[string]interface{}) {
-				if !body["success"].(bool) {
-					t.Error("Expected success to be true")
-				}
-				if body["message"].(string) != "User registered successfully" {
-					t.Error("Expected registration success message")
-				}
-				data := body["data"].(map[string]interface{})
-				if data["email"].(string) != "test@example.com" {
-					t.Error("Expected user email in response")
-				}
-			},    func(ctx context.Context, req *domain.CreateUserRequest) (*domain.UserResponse, error)
+	registerFunc      func(ctx context.Context, req *domain.CreateUserRequest) (*domain.UserResponse, error)
 	loginFunc         func(ctx context.Context, req *domain.LoginRequest) (string, *domain.UserResponse, error)
 	getProfileFunc    func(ctx context.Context, userID string) (*domain.UserResponse, error)
 	updateProfileFunc func(ctx context.Context, userID string, req *domain.UpdateUserRequest) (*domain.UserResponse, error)
@@ -89,39 +76,11 @@ func (m *mockUserService) RefreshToken(ctx context.Context, userID string) (stri
 	return "", fmt.Errorf("not implemented")
 }
 
-func (m *mockUserService) UpdateProfile(ctx context.Context, userID string, req *domain.UpdateUserRequest) (*domain.UserResponse, error) {
-	if m.updateProfileFunc != nil {
-		return m.updateProfileFunc(ctx, userID, req)
+func (m *mockUserService) GetProfile(ctx context.Context, userID string) (*domain.UserResponse, error) {
+	if m.getProfileFunc != nil {
+		return m.getProfileFunc(ctx, userID)
 	}
 	return nil, fmt.Errorf("not implemented")
-}
-
-func (m *mockUserService) GetUsers(ctx context.Context, limit, offset int) ([]*domain.UserResponse, int64, error) {
-	if m.getUsersFunc != nil {
-		return m.getUsersFunc(ctx, limit, offset)
-	}
-	return nil, 0, fmt.Errorf("not implemented")
-}
-
-func (m *mockUserService) GetUserByID(ctx context.Context, id string) (*domain.UserResponse, error) {
-	if m.getUserByIDFunc != nil {
-		return m.getUserByIDFunc(ctx, id)
-	}
-	return nil, fmt.Errorf("not implemented")
-}
-
-func (m *mockUserService) DeleteUser(ctx context.Context, id string) error {
-	if m.deleteUserFunc != nil {
-		return m.deleteUserFunc(ctx, id)
-	}
-	return fmt.Errorf("not implemented")
-}
-
-func (m *mockUserService) RefreshToken(ctx context.Context, userID string) (string, error) {
-	if m.refreshTokenFunc != nil {
-		return m.refreshTokenFunc(ctx, userID)
-	}
-	return "", fmt.Errorf("not implemented")
 }
 
 // Test data
@@ -222,9 +181,9 @@ func TestUserHandler_Register(t *testing.T) {
 			},
 		},
 		{
-			name:        "invalid JSON request body",
-			requestBody: `{"invalid": json}`,
-			mockSetup:   func(m *mockUserService) {},
+			name:           "invalid JSON request body",
+			requestBody:    `{"invalid": json}`,
+			mockSetup:      func(m *mockUserService) {},
 			expectedStatus: http.StatusBadRequest,
 			checkResponse: func(t *testing.T, body map[string]interface{}) {
 				if body["success"].(bool) {
@@ -268,7 +227,7 @@ func TestUserHandler_Register(t *testing.T) {
 			// Create request
 			var body []byte
 			var err error
-			
+
 			if str, ok := tt.requestBody.(string); ok {
 				body = []byte(str)
 			} else {
@@ -501,7 +460,7 @@ func TestUserHandler_GetProfile(t *testing.T) {
 
 			// Create request
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/profile", nil)
-			
+
 			// Add user ID to context if provided
 			if tt.userID != "" {
 				ctx := context.WithValue(req.Context(), "user_id", tt.userID)
