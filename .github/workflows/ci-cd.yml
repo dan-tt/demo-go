@@ -264,7 +264,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build, deploy-staging]
+    needs: build  # Only depend on build, not staging
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     
@@ -339,6 +339,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-production]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
     
     steps:
     - name: Delete old container images
