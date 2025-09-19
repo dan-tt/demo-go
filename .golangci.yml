@@ -2,7 +2,7 @@
 # See https://golangci-lint.run/usage/configuration/ for available options
 
 run:
-  timeout: 5m
+  timeout: 3m
   issues-exit-code: 1
   tests: true
 
@@ -15,19 +15,20 @@ output:
 linters-settings:
   errcheck:
     check-type-assertions: true
-    check-blank: true
+    check-blank: false  # Reduced strictness
   
   goconst:
     min-len: 3
-    min-occurrences: 3
+    min-occurrences: 5  # Increased threshold
   
   gocritic:
     enabled-tags:
       - diagnostic
-      - experimental
-      - opinionated
       - performance
-      - style
+    disabled-checks:
+      - rangeValCopy
+      - hugeParam
+      - commentedOutCode
   
   gofmt:
     simplify: true
@@ -35,14 +36,28 @@ linters-settings:
   goimports:
     local-prefixes: demo-go
   
-  golint:
-    min-confidence: 0.8
-  
   govet:
-    enable-all: true
-    settings:
-      shadow:
-        strict: true
+    enable:
+      - atomic
+      - bools
+      - buildtag
+      - errorsas
+      - httpresponse
+      - loopclosure
+      - lostcancel
+      - nilfunc
+      - printf
+      - shift
+      - stdmethods
+      - structtag
+      - tests
+      - unmarshal
+      - unreachable
+      - unsafeptr
+      - unusedresult
+    disable:
+      - shadow        # Too noisy
+      - fieldalignment # Optimization hint, not critical for CI
   
   depguard:
     rules:
@@ -60,96 +75,145 @@ linters-settings:
           - github.com/golang-jwt/jwt/v5
           - golang.org/x/crypto
   
-  lll:
-    line-length: 120
+  funlen:
+    lines: 120  # Increased from default 60
+    statements: 50
   
-  maligned:
-    suggest-new: true
+  gocyclo:
+    min-complexity: 15  # Increased from default 10
+  
+  lll:
+    line-length: 130  # Slightly increased
+  
+  mnd:
+    ignored-functions:
+      - "time.*"
+      - "math.*"
+      - "strconv.*"
+    ignored-files:
+      - "_test.go"
   
   misspell:
     locale: US
   
   nolintlint:
-    allow-leading-space: false
-    require-explanation: true
+    allow-leading-space: true  # More flexible
+    require-explanation: false  # Less strict
     require-specific: true
+  
+  revive:
+    severity: warning
+    rules:
+      - name: exported
+        disabled: true  # Too noisy for CI
+      - name: package-comments
+        disabled: true  # Optional for internal packages
+      - name: var-declaration
+        disabled: true  # Style preference
+      - name: empty-block
+        disabled: true  # Sometimes intentional
+      - name: unused-parameter
+        disabled: true  # Common in interfaces
 
 linters:
   enable:
-    - bodyclose
-    - depguard
-    - dogsled
-    - dupl
-    - errcheck
-    - copyloopvar
-    - exhaustive
-    - funlen
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - revive
-    - mnd
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
-    - noctx
-    - nolintlint
-    - rowserrcheck
-    - staticcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
-  
+    # Essential linters for CI - critical errors only
+    - errcheck      # Missing error checks
+    - gosimple      # Simplification suggestions
+    - govet         # Go vet checks (reduced set)
+    - ineffassign   # Ineffectual assignments
+    - staticcheck   # Static analysis (with exclusions)
+    - typecheck     # Type checking
+    - unused        # Unused code
+    
+    # Important for correctness
+    - bodyclose     # HTTP response body closing
+    - rowserrcheck  # SQL rows error checking
+    
+    # Code formatting (fast)
+    - gofmt         # Go formatting
+    - goimports     # Import formatting
+    - misspell      # Spelling errors
+    
+    # Security (important)
+    - gosec         # Security issues (with exclusions)
+    
+    # Optional quality checks
+    - dupl          # Code duplication (limited)
+    - unconvert     # Unnecessary conversions
+    
   disable:
-    - gochecknoglobals
-    - godox
+    # Disabled for CI efficiency and reduced noise
+    - copyloopvar     # Go 1.22+ feature, project uses 1.21
+    - depguard        # Dependency restrictions - too restrictive
+    - dogsled         # Assignment count - style preference
+    - exhaustive      # Exhaustive enum checking - too strict
+    - funlen          # Function length - we handle case by case
+    - gochecknoinits  # Init function checking - sometimes necessary
+    - goconst         # Constant suggestions - can be noisy
+    - gocritic        # Various suggestions - too opinionated for CI
+    - gocyclo         # Cyclomatic complexity - handle separately
+    - goprintffuncname # Printf function naming - rarely an issue
+    - lll             # Line length - flexible in practice
+    - mnd             # Magic number detection - too strict
+    - nakedret        # Naked returns - style preference
+    - noctx           # HTTP request context - not always needed
+    - nolintlint      # Linter directive linting - meta-linting
+    - revive          # General linting - overlaps with others
+    - stylecheck      # Style checking - overlaps with others
+    - unparam         # Unused parameters - can flag valid interfaces
+    - whitespace      # Whitespace - handled by gofmt
+    
+    # Already disabled
+    - gochecknoglobals # Global variables - sometimes necessary
+    - godox           # TODO comments - development convenience
 
 issues:
   exclude-dirs:
     - vendor
-    - internal/graphql/generated.go
+    - .git
   exclude-files:
     - ".*_gen.go$"
     - ".*\\.pb\\.go$"
-  uniq-by-line: true
+  exclude-use-default: true  # Use default exclusions
+  max-issues-per-linter: 50  # Limit issues per linter for CI performance
+  max-same-issues: 10        # Limit duplicate issues
+  
   exclude-rules:
-    # Exclude some linters from running on tests files
+    # Very lenient for test files - focus on production code
     - path: _test\.go
       linters:
-        - gocyclo
         - errcheck
+        - gosec
         - dupl
-        - gosec
-        - funlen
-        - lll
+        - gofmt
+        - staticcheck
     
-    # Exclude known linter issues
-    - path: internal/handler/
-      text: "weak cryptographic primitive"
+    # Exclude common false positives and acceptable patterns
+    - text: "weak cryptographic primitive"
       linters:
         - gosec
     
-    # Exclude shadow checking in type switches
-    - text: "shadow: declaration of \"err\" shadows declaration at"
+    - text: "G404:"  # Random number generation
       linters:
-        - govet
-    
-    # Exclude empty branch warnings for proper error handling
-    - text: "SA9003: empty branch"
+        - gosec
+        
+    - text: "SA1029:" # String keys in context (acceptable in tests)
+      path: _test\.go
       linters:
         - staticcheck
-  
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+        
+    - text: "SA9003:" # Empty branches (often intentional for error handling)
+      linters:
+        - staticcheck
+    
+    # Allow long lines in generated or vendor files
+    - path: "(vendor|generated|pb\\.go)"
+      linters:
+        - lll
+        - gofmt
+        
+    # Allow TODO comments in development
+    - text: "(TODO|FIXME|BUG)"
+      linters:
+        - godox

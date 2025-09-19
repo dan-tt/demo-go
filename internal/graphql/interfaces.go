@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+
 	"demo-go/internal/domain"
 )
 
@@ -63,20 +64,20 @@ type ExecutableSchema interface {
 // ResponseData represents GraphQL response data
 type ResponseData struct {
 	Data       interface{}            `json:"data,omitempty"`
-	Errors     []GraphQLError         `json:"errors,omitempty"`
+	Errors     []Error                `json:"errors,omitempty"`
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 }
 
-// GraphQLError represents a GraphQL error
-type GraphQLError struct {
+// Error represents a GraphQL error
+type Error struct {
 	Message    string                 `json:"message"`
 	Path       []interface{}          `json:"path,omitempty"`
-	Locations  []GraphQLLocation      `json:"locations,omitempty"`
+	Locations  []Location             `json:"locations,omitempty"`
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 }
 
-// GraphQLLocation represents error location
-type GraphQLLocation struct {
+// Location represents error location
+type Location struct {
 	Line   int `json:"line"`
 	Column int `json:"column"`
 }

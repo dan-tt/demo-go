@@ -12,7 +12,7 @@ import (
 // cachedUserService wraps a UserService with caching capabilities
 type cachedUserService struct {
 	userService domain.UserService
-	cache       cache.CacheService
+	cache       cache.Service
 	logger      *logger.Logger
 	cacheTTL    time.Duration
 }
@@ -20,7 +20,7 @@ type cachedUserService struct {
 // NewCachedUserService creates a new cached user service wrapper
 func NewCachedUserService(
 	userService domain.UserService,
-	cacheService cache.CacheService,
+	cacheService cache.Service,
 	cacheTTL time.Duration,
 ) domain.UserService {
 	return &cachedUserService{

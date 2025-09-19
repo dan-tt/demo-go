@@ -73,10 +73,12 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 			},
 		},
 		{
-			name:           "missing user ID in context",
-			userID:         "",
-			requestBody:    domain.UpdateUserRequest{},
-			mockSetup:      func(m *mockUserService) {},
+			name:        "missing user ID in context",
+			userID:      "",
+			requestBody: domain.UpdateUserRequest{},
+			mockSetup: func(m *mockUserService) {
+				// No setup needed for this test case
+			},
 			expectedStatus: http.StatusUnauthorized,
 			checkResponse: func(t *testing.T, body map[string]interface{}) {
 				if body["success"].(bool) {
@@ -264,7 +266,7 @@ func TestUserHandler_GetUsers(t *testing.T) {
 			}
 
 			// Create request
-			req := httptest.NewRequest(http.MethodGet, url, nil)
+			req := httptest.NewRequest(http.MethodGet, url, http.NoBody)
 
 			// Create response recorder
 			rr := httptest.NewRecorder()
@@ -365,7 +367,7 @@ func TestUserHandler_GetUserByID(t *testing.T) {
 			userHandler := handler.NewUserHandler(mockService)
 
 			// Create request with mux vars
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+tt.userID, nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users/"+tt.userID, http.NoBody)
 
 			// Setup mux vars
 			vars := map[string]string{}
@@ -472,7 +474,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 			userHandler := handler.NewUserHandler(mockService)
 
 			// Create request with mux vars
-			req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+tt.userID, nil)
+			req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/users/"+tt.userID, http.NoBody)
 
 			// Setup mux vars
 			vars := map[string]string{}
@@ -574,7 +576,7 @@ func TestUserHandler_RefreshToken(t *testing.T) {
 			userHandler := handler.NewUserHandler(mockService)
 
 			// Create request
-			req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+			req := httptest.NewRequest(http.MethodPost, "/auth/refresh", http.NoBody)
 
 			// Add user ID to context if provided
 			if tt.userID != "" {
@@ -637,7 +639,7 @@ func TestUserHandler_Health(t *testing.T) {
 			userHandler := handler.NewUserHandler(nil)
 
 			// Create request
-			req := httptest.NewRequest(http.MethodGet, "/health", nil)
+			req := httptest.NewRequest(http.MethodGet, "/health", http.NoBody)
 
 			// Create response recorder
 			rr := httptest.NewRecorder()

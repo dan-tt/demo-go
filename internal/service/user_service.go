@@ -13,6 +13,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Service limits and constants
+const (
+	DefaultPageLimit = 10
+	MaxPageLimit     = 100
+	MinNameLength    = 2
+	MaxNameLength    = 100
+	MinPasswordLen   = 6
+	BCryptCost       = 10
+)
+
 // userService implements domain.UserService
 type userService struct {
 	userRepo     domain.UserRepository
@@ -192,10 +202,10 @@ func (s *userService) UpdateProfile(
 func (s *userService) GetUsers(ctx context.Context, limit, offset int) ([]*domain.UserResponse, int64, error) {
 	// Set default and max limits
 	if limit <= 0 {
-		limit = 10
+		limit = DefaultPageLimit
 	}
-	if limit > 100 {
-		limit = 100
+	if limit > MaxPageLimit {
+		limit = MaxPageLimit
 	}
 	if offset < 0 {
 		offset = 0
@@ -254,23 +264,23 @@ func (s *userService) RefreshToken(ctx context.Context, userID string) (string, 
 
 func (s *userService) validateCreateUserRequest(req *domain.CreateUserRequest) error {
 	if strings.TrimSpace(req.Name) == "" {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Name is required"}
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Name is required"}
 	}
 
-	if len(strings.TrimSpace(req.Name)) < 2 {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Name must be at least 2 characters long"}
+	if len(strings.TrimSpace(req.Name)) < MinNameLength {
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Name must be at least 2 characters long"}
 	}
 
 	if strings.TrimSpace(req.Email) == "" {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Email is required"}
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Email is required"}
 	}
 
 	if !s.isValidEmail(req.Email) {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
 	}
 
-	if len(req.Password) < 6 {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Password must be at least 6 characters long"}
+	if len(req.Password) < MinPasswordLen {
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Password must be at least 6 characters long"}
 	}
 
 	return nil
@@ -278,23 +288,23 @@ func (s *userService) validateCreateUserRequest(req *domain.CreateUserRequest) e
 
 func (s *userService) validateLoginRequest(req *domain.LoginRequest) error {
 	if strings.TrimSpace(req.Email) == "" {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Email is required"}
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Email is required"}
 	}
 
 	if req.Password == "" {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Password is required"}
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Password is required"}
 	}
 
 	return nil
 }
 
 func (s *userService) validateUpdateUserRequest(req *domain.UpdateUserRequest) error {
-	if req.Name != nil && len(strings.TrimSpace(*req.Name)) < 2 {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Name must be at least 2 characters long"}
+	if req.Name != nil && len(strings.TrimSpace(*req.Name)) < MinNameLength {
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Name must be at least 2 characters long"}
 	}
 
 	if req.Email != nil && !s.isValidEmail(*req.Email) {
-		return &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
+		return &domain.Error{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
 	}
 
 	return nil

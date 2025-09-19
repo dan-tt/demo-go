@@ -190,38 +190,47 @@ func Debug(args ...interface{}) {
 	GetGlobal().Debug(args...)
 }
 
+// Info logs an info message using the global logger
 func Info(args ...interface{}) {
 	GetGlobal().Info(args...)
 }
 
+// Warn logs a warning message using the global logger
 func Warn(args ...interface{}) {
 	GetGlobal().Warn(args...)
 }
 
+// Error logs an error message using the global logger
 func Error(args ...interface{}) {
 	GetGlobal().Error(args...)
 }
 
+// Fatal logs a fatal message and exits using the global logger
 func Fatal(args ...interface{}) {
 	GetGlobal().Fatal(args...)
 }
 
+// Debugf logs a formatted debug message using the global logger
 func Debugf(template string, args ...interface{}) {
 	GetGlobal().Debugf(template, args...)
 }
 
+// Infof logs a formatted info message using the global logger
 func Infof(template string, args ...interface{}) {
 	GetGlobal().Infof(template, args...)
 }
 
+// Warnf logs a formatted warning message using the global logger
 func Warnf(template string, args ...interface{}) {
 	GetGlobal().Warnf(template, args...)
 }
 
+// Errorf logs a formatted error message using the global logger
 func Errorf(template string, args ...interface{}) {
 	GetGlobal().Errorf(template, args...)
 }
 
+// Fatalf logs a formatted fatal message and exits using the global logger
 func Fatalf(template string, args ...interface{}) {
 	GetGlobal().Fatalf(template, args...)
 }

@@ -231,7 +231,7 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // Health check endpoint
-func (h *UserHandler) Health(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) Health(w http.ResponseWriter, _ *http.Request) {
 	response := map[string]interface{}{
 		"status":    "healthy",
 		"service":   "clean-architecture-api",
@@ -253,7 +253,7 @@ func (h *UserHandler) getUserIDFromContext(r *http.Request) string {
 }
 
 func (h *UserHandler) handleServiceError(w http.ResponseWriter, err error) {
-	if domainErr, ok := err.(*domain.DomainError); ok {
+	if domainErr, ok := err.(*domain.Error); ok {
 		switch domainErr.Code {
 		case "USER_NOT_FOUND":
 			h.writeErrorResponse(w, http.StatusNotFound, domainErr.Message, domainErr.Code)

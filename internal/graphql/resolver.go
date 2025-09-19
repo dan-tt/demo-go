@@ -60,7 +60,7 @@ func (r *queryResolver) GetUser(ctx context.Context, id string) (*domain.UserRes
 }
 
 // GetUsers resolves the getUsers query
-func (r *queryResolver) GetUsers(ctx context.Context, limit *int, offset *int) ([]*domain.UserResponse, error) {
+func (r *queryResolver) GetUsers(ctx context.Context, limit, offset *int) ([]*domain.UserResponse, error) {
 	log := r.logger.ForService("query", "getUsers")
 
 	// Set default values if not provided

@@ -27,8 +27,19 @@ type RouteInfo struct {
 
 // GetAllRouteInfo returns detailed information about all routes
 func (r *Router) GetAllRouteInfo() []RouteInfo {
-	routes := []RouteInfo{
-		// Health routes
+	var routes []RouteInfo
+
+	routes = append(routes, r.getHealthRoutes()...)
+	routes = append(routes, r.getAuthRoutes()...)
+	routes = append(routes, r.getUserRoutes()...)
+	routes = append(routes, r.getAdminRoutes()...)
+
+	return routes
+}
+
+// getHealthRoutes returns health check route information
+func (r *Router) getHealthRoutes() []RouteInfo {
+	return []RouteInfo{
 		{
 			Method:      "GET",
 			Path:        "/health",
@@ -37,8 +48,12 @@ func (r *Router) GetAllRouteInfo() []RouteInfo {
 			Protected:   false,
 			AdminOnly:   false,
 		},
+	}
+}
 
-		// Auth routes
+// getAuthRoutes returns authentication route information
+func (r *Router) getAuthRoutes() []RouteInfo {
+	return []RouteInfo{
 		{
 			Method:      "POST",
 			Path:        "/auth/register",
@@ -63,8 +78,12 @@ func (r *Router) GetAllRouteInfo() []RouteInfo {
 			Protected:   false,
 			AdminOnly:   false,
 		},
+	}
+}
 
-		// User API routes
+// getUserRoutes returns user API route information
+func (r *Router) getUserRoutes() []RouteInfo {
+	return []RouteInfo{
 		{
 			Method:      "GET",
 			Path:        "/api/v1/profile",
@@ -81,8 +100,12 @@ func (r *Router) GetAllRouteInfo() []RouteInfo {
 			Protected:   true,
 			AdminOnly:   false,
 		},
+	}
+}
 
-		// Admin routes
+// getAdminRoutes returns admin API route information
+func (r *Router) getAdminRoutes() []RouteInfo {
+	return []RouteInfo{
 		{
 			Method:      "GET",
 			Path:        "/api/v1/admin/users",
@@ -108,6 +131,4 @@ func (r *Router) GetAllRouteInfo() []RouteInfo {
 			AdminOnly:   true,
 		},
 	}
-
-	return routes
 }

@@ -15,8 +15,8 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-// CacheService defines the interface for cache operations
-type CacheService interface {
+// Service defines the interface for cache operations
+type Service interface {
 	// User-specific cache operations
 	GetUser(ctx context.Context, userID string) (*domain.UserResponse, error)
 	SetUser(ctx context.Context, userID string, user *domain.UserResponse, ttl time.Duration) error
@@ -38,7 +38,7 @@ type CacheService interface {
 	Close() error
 }
 
-// redisCache implements CacheService using Redis
+// redisCache implements Service using Redis
 type redisCache struct {
 	client *redis.Client
 	logger *logger.Logger
@@ -46,7 +46,7 @@ type redisCache struct {
 }
 
 // NewRedisCache creates a new Redis cache service
-func NewRedisCache(cfg *config.Config) (CacheService, error) {
+func NewRedisCache(cfg *config.Config) (Service, error) {
 	log := logger.GetGlobal().ForComponent("redis-cache")
 
 	log.Info("Initializing Redis cache",
@@ -313,8 +313,8 @@ func (c *redisCache) InvalidateUserCache(ctx context.Context, userID string) err
 	return nil
 }
 
-// CacheStats represents cache statistics
-type CacheStats struct {
+// Stats represents cache statistics
+type Stats struct {
 	Hits        int64   `json:"hits"`
 	Misses      int64   `json:"misses"`
 	Keys        int64   `json:"keys"`
@@ -324,7 +324,7 @@ type CacheStats struct {
 }
 
 // GetStats returns cache statistics
-func (c *redisCache) GetStats(ctx context.Context) (*CacheStats, error) {
+func (c *redisCache) GetStats(ctx context.Context) (*Stats, error) {
 	log := c.logger
 
 	log.Debug("Getting cache statistics")
@@ -336,7 +336,7 @@ func (c *redisCache) GetStats(ctx context.Context) (*CacheStats, error) {
 	}
 
 	// Parse Redis INFO output
-	stats := &CacheStats{}
+	stats := &Stats{}
 
 	// Get database size
 	dbSize, err := c.client.DBSize(ctx).Result()

@@ -64,22 +64,33 @@ type JWTConfig struct {
 	Expiration time.Duration
 }
 
+// Default timeout constants
+const (
+	DefaultReadWriteTimeout = 15 * time.Second
+	DefaultShutdownTimeout  = 30 * time.Second
+	DefaultDBTimeout        = 10 * time.Second
+	DefaultMaxPoolSize      = 100
+	DefaultJWTExpiration    = 24 * time.Hour
+	DefaultCacheTTL         = 5 * time.Minute
+	DefaultRedisDataTTL     = 1 * time.Hour
+)
+
 // Load creates and returns a new Config with values from environment variables
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
 			Port:            getEnv("SERVER_PORT", "8080"),
 			Host:            getEnv("SERVER_HOST", "0.0.0.0"),
-			ReadTimeout:     getDurationEnv("SERVER_READ_TIMEOUT", 15*time.Second),
-			WriteTimeout:    getDurationEnv("SERVER_WRITE_TIMEOUT", 15*time.Second),
-			ShutdownTimeout: getDurationEnv("SERVER_SHUTDOWN_TIMEOUT", 30*time.Second),
+			ReadTimeout:     getDurationEnv("SERVER_READ_TIMEOUT", DefaultReadWriteTimeout),
+			WriteTimeout:    getDurationEnv("SERVER_WRITE_TIMEOUT", DefaultReadWriteTimeout),
+			ShutdownTimeout: getDurationEnv("SERVER_SHUTDOWN_TIMEOUT", DefaultShutdownTimeout),
 		},
 		Database: DatabaseConfig{
 			MongoDB: MongoDBConfig{
 				URI:         getEnv("MONGODB_URI", "mongodb://localhost:27017"),
 				Database:    getEnv("MONGODB_DATABASE", "demo_clean"),
-				Timeout:     getDurationEnv("MONGODB_TIMEOUT", 10*time.Second),
-				MaxPoolSize: getIntEnv("MONGODB_MAX_POOL_SIZE", 100),
+				Timeout:     getDurationEnv("MONGODB_TIMEOUT", DefaultDBTimeout),
+				MaxPoolSize: getIntEnv("MONGODB_MAX_POOL_SIZE", DefaultMaxPoolSize),
 			},
 		},
 		Cache: CacheConfig{
@@ -93,13 +104,13 @@ func Load() *Config {
 				DialTimeout:  getDurationEnv("REDIS_DIAL_TIMEOUT", 5*time.Second),
 				ReadTimeout:  getDurationEnv("REDIS_READ_TIMEOUT", 3*time.Second),
 				WriteTimeout: getDurationEnv("REDIS_WRITE_TIMEOUT", 3*time.Second),
-				IdleTimeout:  getDurationEnv("REDIS_IDLE_TIMEOUT", 5*time.Minute),
-				TTL:          getDurationEnv("REDIS_TTL", 1*time.Hour),
+				IdleTimeout:  getDurationEnv("REDIS_IDLE_TIMEOUT", DefaultCacheTTL),
+				TTL:          getDurationEnv("REDIS_TTL", DefaultRedisDataTTL),
 			},
 		},
 		JWT: JWTConfig{
-			SecretKey:  getEnv("JWT_SECRET_KEY", "default-secret-key-change-in-production"),
-			Expiration: getDurationEnv("JWT_EXPIRATION", 24*time.Hour),
+			SecretKey:  getEnv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production"),
+			Expiration: getDurationEnv("JWT_EXPIRATION", DefaultJWTExpiration),
 		},
 	}
 }

@@ -20,6 +20,9 @@ import (
 	"demo-go/internal/service"
 )
 
+// MongoDB disconnect timeout
+const MongoDisconnectTimeout = 10 * time.Second
+
 func main() {
 	// Initialize logger first
 	loggerConfig := logger.DefaultConfig()
@@ -48,7 +51,8 @@ func main() {
 	// Initialize dependencies
 	server, cleanup, err := initializeServer(cfg, logger.GetGlobal())
 	if err != nil {
-		log.Fatal("Failed to initialize server", "error", err)
+		log.Error("Failed to initialize server", "error", err)
+		os.Exit(1)
 	}
 	defer cleanup()
 
@@ -58,7 +62,8 @@ func main() {
 			"address", fmt.Sprintf("http://%s:%s", cfg.Server.Host, cfg.Server.Port),
 		)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("Server failed to start", "error", err)
+			log.Error("Server failed to start", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -85,92 +90,29 @@ func main() {
 func initializeServer(cfg *config.Config, baseLogger *logger.Logger) (*http.Server, func(), error) {
 	log := baseLogger.ForComponent("server")
 
-	// Choose repository implementation based on environment
-	var userRepo domain.UserRepository
-	var cleanup func() = func() {}
-
-	repositoryType := os.Getenv("REPOSITORY_TYPE")
-	if repositoryType == "memory" || repositoryType == "" {
-		log.Info("Using in-memory repository")
-		userRepo = repository.NewMemoryUserRepository()
-	} else if repositoryType == "mongodb" {
-		log.Info("Using MongoDB repository")
-
-		// Initialize MongoDB client
-		mongoClient, err := repository.NewMongoClient(cfg)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
-		}
-
-		userRepo = repository.NewMongoUserRepository(mongoClient, cfg)
-
-		// Setup cleanup function
-		cleanup = func() {
-			log.Info("Disconnecting from MongoDB")
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-			if err := mongoClient.Disconnect(ctx); err != nil {
-				log.Error("Error disconnecting from MongoDB", "error", err)
-			} else {
-				log.Info("Disconnected from MongoDB")
-			}
-		}
-	} else {
-		return nil, nil, fmt.Errorf("unsupported repository type: %s", repositoryType)
+	// Initialize repository
+	userRepo, cleanup, err := initializeRepository(cfg, log)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Initialize services
-	tokenService := service.NewJWTTokenService(cfg)
-	baseUserService := service.NewUserService(userRepo, tokenService)
-
-	// Initialize cache service
-	var userService domain.UserService = baseUserService
-	var cacheCleanup func() = func() {}
-
-	cacheType := os.Getenv("CACHE_TYPE")
-	if cacheType == "redis" {
-		log.Info("Initializing Redis cache")
-		cacheService, err := cache.NewRedisCache(cfg)
-		if err != nil {
-			log.Warn("Failed to initialize Redis cache, using service without cache", "error", err)
-			// Continue without cache
-		} else {
-			log.Info("Redis cache initialized successfully")
-			// Wrap the base service with caching
-			userService = service.NewCachedUserService(baseUserService, cacheService, cfg.Cache.Redis.TTL)
-
-			// Add cache cleanup
-			cacheCleanup = func() {
-				log.Info("Closing cache connection")
-				if err := cacheService.Close(); err != nil {
-					log.Error("Error closing cache connection", "error", err)
-				} else {
-					log.Info("Cache connection closed")
-				}
-			}
-		}
-	} else {
-		log.Info("Cache disabled or not configured")
-	}
+	userService, cacheCleanup := initializeServices(cfg, userRepo, log)
 
 	// Combine cleanup functions
-	originalCleanup := cleanup
-	cleanup = func() {
+	combinedCleanup := func() {
 		cacheCleanup()
-		originalCleanup()
+		cleanup()
 	}
 
-	// Initialize handlers
+	// Initialize handlers and middleware
 	userHandler := handler.NewUserHandler(userService)
+	jwtMiddleware := middleware.NewJWTMiddleware(service.NewJWTTokenService(cfg))
 
-	// Initialize middleware
-	jwtMiddleware := middleware.NewJWTMiddleware(tokenService)
-
-	// Setup routes
+	// Setup routes and server
 	router := routes.NewRouter(userHandler, jwtMiddleware, baseLogger)
 	httpRouter := router.SetupRoutes()
 
-	// Create HTTP server
 	server := &http.Server{
 		Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
 		Handler:      httpRouter,
@@ -178,5 +120,74 @@ func initializeServer(cfg *config.Config, baseLogger *logger.Logger) (*http.Serv
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
 
-	return server, cleanup, nil
+	return server, combinedCleanup, nil
+}
+
+// initializeRepository sets up the data repository based on configuration
+func initializeRepository(cfg *config.Config, log *logger.Logger) (domain.UserRepository, func(), error) {
+	repositoryType := os.Getenv("REPOSITORY_TYPE")
+
+	if repositoryType == "memory" || repositoryType == "" {
+		log.Info("Using in-memory repository")
+		return repository.NewMemoryUserRepository(), func() {}, nil
+	}
+
+	if repositoryType == "mongodb" {
+		log.Info("Using MongoDB repository")
+
+		mongoClient, err := repository.NewMongoClient(cfg)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+		}
+
+		userRepo := repository.NewMongoUserRepository(mongoClient, cfg)
+
+		cleanup := func() {
+			log.Info("Disconnecting from MongoDB")
+			ctx, cancel := context.WithTimeout(context.Background(), MongoDisconnectTimeout)
+			defer cancel()
+			if err := mongoClient.Disconnect(ctx); err != nil {
+				log.Error("Error disconnecting from MongoDB", "error", err)
+			} else {
+				log.Info("Disconnected from MongoDB")
+			}
+		}
+
+		return userRepo, cleanup, nil
+	}
+
+	return nil, nil, fmt.Errorf("unsupported repository type: %s", repositoryType)
+}
+
+// initializeServices sets up the business logic services with optional caching
+func initializeServices(cfg *config.Config, userRepo domain.UserRepository, log *logger.Logger) (domain.UserService, func()) {
+	tokenService := service.NewJWTTokenService(cfg)
+	baseUserService := service.NewUserService(userRepo, tokenService)
+
+	cacheType := os.Getenv("CACHE_TYPE")
+	if cacheType != "redis" {
+		log.Info("Cache disabled or not configured")
+		return baseUserService, func() {}
+	}
+
+	log.Info("Initializing Redis cache")
+	cacheService, err := cache.NewRedisCache(cfg)
+	if err != nil {
+		log.Warn("Failed to initialize Redis cache, using service without cache", "error", err)
+		return baseUserService, func() {}
+	}
+
+	log.Info("Redis cache initialized successfully")
+	userService := service.NewCachedUserService(baseUserService, cacheService, cfg.Cache.Redis.TTL)
+
+	cleanup := func() {
+		log.Info("Closing cache connection")
+		if err := cacheService.Close(); err != nil {
+			log.Error("Error closing cache connection", "error", err)
+		} else {
+			log.Info("Cache connection closed")
+		}
+	}
+
+	return userService, cleanup
 }

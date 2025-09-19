@@ -33,6 +33,13 @@ type UpdateUserRequest struct {
 	Role  *string `json:"role,omitempty"`
 }
 
+// UpdateUserInput represents input for GraphQL user updates
+type UpdateUserInput struct {
+	Name  *string `json:"name,omitempty"`
+	Email *string `json:"email,omitempty"`
+	Role  *string `json:"role,omitempty"`
+}
+
 // LoginRequest represents user login credentials
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,email"`
@@ -100,22 +107,23 @@ type TokenClaims struct {
 	Iat    int64  `json:"iat"`
 }
 
-// DomainError represents a domain-specific error with a code and message.
-type DomainError struct {
+// Error represents a domain-specific error with a code and message.
+type Error struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 
-func (e *DomainError) Error() string {
+func (e *Error) Error() string {
 	return e.Message
 }
 
 var (
-	ErrUserNotFound       = &DomainError{Code: "USER_NOT_FOUND", Message: "User not found"}
-	ErrUserAlreadyExists  = &DomainError{Code: "USER_ALREADY_EXISTS", Message: "User with this email already exists"}
-	ErrInvalidCredentials = &DomainError{Code: "INVALID_CREDENTIALS", Message: "Invalid email or password"}
-	ErrInvalidToken       = &DomainError{Code: "INVALID_TOKEN", Message: "Invalid or expired token"}
-	ErrUnauthorized       = &DomainError{Code: "UNAUTHORIZED", Message: "Unauthorized access"}
-	ErrForbidden          = &DomainError{Code: "FORBIDDEN", Message: "Access forbidden"}
-	ErrValidationFailed   = &DomainError{Code: "VALIDATION_FAILED", Message: "Validation failed"}
+	// ErrUserNotFound indicates that a requested user was not found
+	ErrUserNotFound       = &Error{Code: "USER_NOT_FOUND", Message: "User not found"}
+	ErrUserAlreadyExists  = &Error{Code: "USER_ALREADY_EXISTS", Message: "User with this email already exists"}
+	ErrInvalidCredentials = &Error{Code: "INVALID_CREDENTIALS", Message: "Invalid email or password"}
+	ErrInvalidToken       = &Error{Code: "INVALID_TOKEN", Message: "Invalid or expired token"}
+	ErrUnauthorized       = &Error{Code: "UNAUTHORIZED", Message: "Unauthorized access"}
+	ErrForbidden          = &Error{Code: "FORBIDDEN", Message: "Access forbidden"}
+	ErrValidationFailed   = &Error{Code: "VALIDATION_FAILED", Message: "Validation failed"}
 )

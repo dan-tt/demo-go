@@ -170,7 +170,7 @@ func TestUserHandler_Register(t *testing.T) {
 			},
 			mockSetup: func(m *mockUserService) {
 				m.registerFunc = func(ctx context.Context, req *domain.CreateUserRequest) (*domain.UserResponse, error) {
-					return nil, &domain.DomainError{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
+					return nil, &domain.Error{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
 				}
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -459,7 +459,7 @@ func TestUserHandler_GetProfile(t *testing.T) {
 			userHandler := handler.NewUserHandler(mockService)
 
 			// Create request
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/profile", nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/profile", http.NoBody)
 
 			// Add user ID to context if provided
 			if tt.userID != "" {

@@ -20,16 +20,20 @@ const (
 )
 
 // Helper functions to safely retrieve context values
+
+// GetUserIDFromContext extracts the user ID from the request context
 func GetUserIDFromContext(ctx context.Context) (string, bool) {
 	userID, ok := ctx.Value(userIDKey).(string)
 	return userID, ok
 }
 
+// GetUserEmailFromContext extracts the user email from the request context
 func GetUserEmailFromContext(ctx context.Context) (string, bool) {
 	email, ok := ctx.Value(userEmailKey).(string)
 	return email, ok
 }
 
+// GetUserRoleFromContext extracts the user role from the request context
 func GetUserRoleFromContext(ctx context.Context) (string, bool) {
 	role, ok := ctx.Value(userRoleKey).(string)
 	return role, ok
