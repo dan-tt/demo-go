@@ -1,0 +1,38 @@
+# =============================================================================
+# Docker Compose Override for Development
+# =============================================================================
+# This file extends docker-compose.yml for development-specific settings
+# It will be automatically loaded when running docker-compose commands
+
+version: '3.8'
+
+services:
+  # API Server - Development overrides
+  api-server:
+    volumes:
+      # Mount source code for hot reloading (if supported)
+      - .:/app
+      # Mount logs directory
+      - ./logs:/app/logs
+    environment:
+      # Override for development
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      APP_DEBUG: "true"
+      GRAPHQL_PLAYGROUND_ENABLED: "true"
+      GRAPHQL_INTROSPECTION_ENABLED: "true"
+
+  # MongoDB - Development overrides
+  mongodb:
+    # Enable MongoDB logging in development
+    command: ["mongod", "--logpath", "/var/log/mongodb/mongod.log", "--logappend"]
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_logs:/var/log/mongodb
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      MONGO_LOG_LEVEL: "info"
+
+volumes:
+  mongodb_logs:
+    driver: local

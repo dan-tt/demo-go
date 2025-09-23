@@ -1,0 +1,3719 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>server: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">demo-go/cmd/server/main.go (0.0%)</option>
+				
+				<option value="file1">demo-go/internal/cache/redis.go (0.0%)</option>
+				
+				<option value="file2">demo-go/internal/config/config.go (0.0%)</option>
+				
+				<option value="file3">demo-go/internal/domain/user.go (0.0%)</option>
+				
+				<option value="file4">demo-go/internal/graphql/interfaces.go (0.0%)</option>
+				
+				<option value="file5">demo-go/internal/graphql/resolver.go (0.0%)</option>
+				
+				<option value="file6">demo-go/internal/handler/user_handler.go (0.0%)</option>
+				
+				<option value="file7">demo-go/internal/logger/logger.go (0.0%)</option>
+				
+				<option value="file8">demo-go/internal/middleware/jwt_middleware.go (0.0%)</option>
+				
+				<option value="file9">demo-go/internal/middleware/logging_middleware.go (0.0%)</option>
+				
+				<option value="file10">demo-go/internal/repository/memory_user_repository.go (0.0%)</option>
+				
+				<option value="file11">demo-go/internal/repository/mongo_user_repository.go (0.0%)</option>
+				
+				<option value="file12">demo-go/internal/routes/admin_routes.go (0.0%)</option>
+				
+				<option value="file13">demo-go/internal/routes/auth_routes.go (0.0%)</option>
+				
+				<option value="file14">demo-go/internal/routes/health_routes.go (0.0%)</option>
+				
+				<option value="file15">demo-go/internal/routes/route_types.go (0.0%)</option>
+				
+				<option value="file16">demo-go/internal/routes/routes.go (0.0%)</option>
+				
+				<option value="file17">demo-go/internal/routes/user_routes.go (0.0%)</option>
+				
+				<option value="file18">demo-go/internal/service/cached_user_service.go (0.0%)</option>
+				
+				<option value="file19">demo-go/internal/service/jwt_token_service.go (0.0%)</option>
+				
+				<option value="file20">demo-go/internal/service/user_service.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "fmt"
+        "net/http"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+
+        "demo-go/internal/cache"
+        "demo-go/internal/config"
+        "demo-go/internal/domain"
+        "demo-go/internal/handler"
+        "demo-go/internal/logger"
+        "demo-go/internal/middleware"
+        "demo-go/internal/repository"
+        "demo-go/internal/routes"
+        "demo-go/internal/service"
+)
+
+// MongoDB disconnect timeout
+const MongoDisconnectTimeout = 10 * time.Second
+
+func main() <span class="cov0" title="0">{
+        // Initialize logger first
+        loggerConfig := logger.DefaultConfig()
+        if err := logger.InitGlobal(loggerConfig); err != nil </span><span class="cov0" title="0">{
+                fmt.Printf("Failed to initialize logger: %v\n", err)
+                os.Exit(1)
+        }</span>
+        <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                if err := logger.GetGlobal().Sync(); err != nil </span><span class="cov0" title="0">{
+                        // Log sync failed, but we're exiting anyway
+                        fmt.Printf("Failed to sync logger: %v\n", err)
+                }</span>
+        }()
+
+        <span class="cov0" title="0">log := logger.GetGlobal().ForComponent("main")
+
+        // Load configuration
+        cfg := config.Load()
+
+        log.Info("Starting Clean Architecture API server",
+                "host", cfg.Server.Host,
+                "port", cfg.Server.Port,
+                "environment", loggerConfig.Environment,
+        )
+
+        // Initialize dependencies
+        server, cleanup, err := initializeServer(cfg, logger.GetGlobal())
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to initialize server", "error", err)
+                os.Exit(1)
+        }</span>
+        <span class="cov0" title="0">defer cleanup()
+
+        // Start server
+        go func() </span><span class="cov0" title="0">{
+                log.Info("Server listening",
+                        "address", fmt.Sprintf("http://%s:%s", cfg.Server.Host, cfg.Server.Port),
+                )
+                if err := server.ListenAndServe(); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov0" title="0">{
+                        log.Error("Server failed to start", "error", err)
+                        os.Exit(1)
+                }</span>
+        }()
+
+        // Wait for interrupt signal to gracefully shutdown
+        <span class="cov0" title="0">quit := make(chan os.Signal, 1)
+        signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+        &lt;-quit
+
+        log.Info("Shutting down server")
+
+        // Create shutdown context with timeout
+        ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+        defer cancel()
+
+        // Shutdown server
+        if err := server.Shutdown(ctx); err != nil </span><span class="cov0" title="0">{
+                log.Error("Server forced to shutdown", "error", err)
+        }</span>
+
+        <span class="cov0" title="0">log.Info("Server stopped gracefully")</span>
+}
+
+// initializeServer sets up all dependencies and returns the HTTP server
+func initializeServer(cfg *config.Config, baseLogger *logger.Logger) (*http.Server, func(), error) <span class="cov0" title="0">{
+        log := baseLogger.ForComponent("server")
+
+        // Initialize repository
+        userRepo, cleanup, err := initializeRepository(cfg, log)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, err
+        }</span>
+
+        // Initialize services
+        <span class="cov0" title="0">userService, cacheCleanup := initializeServices(cfg, userRepo, log)
+
+        // Combine cleanup functions
+        combinedCleanup := func() </span><span class="cov0" title="0">{
+                cacheCleanup()
+                cleanup()
+        }</span>
+
+        // Initialize handlers and middleware
+        <span class="cov0" title="0">userHandler := handler.NewUserHandler(userService)
+        jwtMiddleware := middleware.NewJWTMiddleware(service.NewJWTTokenService(cfg))
+
+        // Setup routes and server
+        router := routes.NewRouter(userHandler, jwtMiddleware, baseLogger)
+        httpRouter := router.SetupRoutes()
+
+        server := &amp;http.Server{
+                Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
+                Handler:      httpRouter,
+                ReadTimeout:  cfg.Server.ReadTimeout,
+                WriteTimeout: cfg.Server.WriteTimeout,
+        }
+
+        return server, combinedCleanup, nil</span>
+}
+
+// initializeRepository sets up the data repository based on configuration
+func initializeRepository(cfg *config.Config, log *logger.Logger) (domain.UserRepository, func(), error) <span class="cov0" title="0">{
+        repositoryType := os.Getenv("REPOSITORY_TYPE")
+
+        if repositoryType == "memory" || repositoryType == "" </span><span class="cov0" title="0">{
+                log.Info("Using in-memory repository")
+                return repository.NewMemoryUserRepository(), func() </span>{<span class="cov0" title="0">}</span>, nil
+        }
+
+        <span class="cov0" title="0">if repositoryType == "mongodb" </span><span class="cov0" title="0">{
+                log.Info("Using MongoDB repository")
+
+                mongoClient, err := repository.NewMongoClient(cfg)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+                }</span>
+
+                <span class="cov0" title="0">userRepo := repository.NewMongoUserRepository(mongoClient, cfg)
+
+                cleanup := func() </span><span class="cov0" title="0">{
+                        log.Info("Disconnecting from MongoDB")
+                        ctx, cancel := context.WithTimeout(context.Background(), MongoDisconnectTimeout)
+                        defer cancel()
+                        if err := mongoClient.Disconnect(ctx); err != nil </span><span class="cov0" title="0">{
+                                log.Error("Error disconnecting from MongoDB", "error", err)
+                        }</span> else<span class="cov0" title="0"> {
+                                log.Info("Disconnected from MongoDB")
+                        }</span>
+                }
+
+                <span class="cov0" title="0">return userRepo, cleanup, nil</span>
+        }
+
+        <span class="cov0" title="0">return nil, nil, fmt.Errorf("unsupported repository type: %s", repositoryType)</span>
+}
+
+// initializeServices sets up the business logic services with optional caching
+func initializeServices(cfg *config.Config, userRepo domain.UserRepository, log *logger.Logger) (domain.UserService, func()) <span class="cov0" title="0">{
+        tokenService := service.NewJWTTokenService(cfg)
+        baseUserService := service.NewUserService(userRepo, tokenService)
+
+        cacheType := os.Getenv("CACHE_TYPE")
+        if cacheType != "redis" </span><span class="cov0" title="0">{
+                log.Info("Cache disabled or not configured")
+                return baseUserService, func() </span>{<span class="cov0" title="0">}</span>
+        }
+
+        <span class="cov0" title="0">log.Info("Initializing Redis cache")
+        cacheService, err := cache.NewRedisCache(cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to initialize Redis cache, using service without cache", "error", err)
+                return baseUserService, func() </span>{<span class="cov0" title="0">}</span>
+        }
+
+        <span class="cov0" title="0">log.Info("Redis cache initialized successfully")
+        userService := service.NewCachedUserService(baseUserService, cacheService, cfg.Cache.Redis.TTL)
+
+        cleanup := func() </span><span class="cov0" title="0">{
+                log.Info("Closing cache connection")
+                if err := cacheService.Close(); err != nil </span><span class="cov0" title="0">{
+                        log.Error("Error closing cache connection", "error", err)
+                }</span> else<span class="cov0" title="0"> {
+                        log.Info("Cache connection closed")
+                }</span>
+        }
+
+        <span class="cov0" title="0">return userService, cleanup</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Package cache provides caching functionality for the demo-go application
+// using Redis as the backend cache store with configurable TTL and operations.
+package cache
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "time"
+
+        "demo-go/internal/config"
+        "demo-go/internal/domain"
+        "demo-go/internal/logger"
+
+        "github.com/go-redis/redis/v8"
+)
+
+// Service defines the interface for cache operations
+type Service interface {
+        // User-specific cache operations
+        GetUser(ctx context.Context, userID string) (*domain.UserResponse, error)
+        SetUser(ctx context.Context, userID string, user *domain.UserResponse, ttl time.Duration) error
+        DeleteUser(ctx context.Context, userID string) error
+
+        // Generic cache operations
+        Get(ctx context.Context, key string, result interface{}) error
+        Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+        Delete(ctx context.Context, key string) error
+        Exists(ctx context.Context, key string) (bool, error)
+
+        // Batch operations
+        DeleteByPattern(ctx context.Context, pattern string) error
+
+        // Health check
+        Ping(ctx context.Context) error
+
+        // Close connection
+        Close() error
+}
+
+// redisCache implements Service using Redis
+type redisCache struct {
+        client *redis.Client
+        logger *logger.Logger
+        config *config.RedisConfig
+}
+
+// NewRedisCache creates a new Redis cache service
+func NewRedisCache(cfg *config.Config) (Service, error) <span class="cov0" title="0">{
+        log := logger.GetGlobal().ForComponent("redis-cache")
+
+        log.Info("Initializing Redis cache",
+                "address", cfg.Cache.Redis.Address,
+                "db", cfg.Cache.Redis.DB,
+                "pool_size", cfg.Cache.Redis.PoolSize,
+        )
+
+        // Create Redis client
+        client := redis.NewClient(&amp;redis.Options{
+                Addr:         cfg.Cache.Redis.Address,
+                Password:     cfg.Cache.Redis.Password,
+                DB:           cfg.Cache.Redis.DB,
+                MaxRetries:   cfg.Cache.Redis.MaxRetries,
+                PoolSize:     cfg.Cache.Redis.PoolSize,
+                MinIdleConns: cfg.Cache.Redis.MinIdleConns,
+                DialTimeout:  cfg.Cache.Redis.DialTimeout,
+                ReadTimeout:  cfg.Cache.Redis.ReadTimeout,
+                WriteTimeout: cfg.Cache.Redis.WriteTimeout,
+                IdleTimeout:  cfg.Cache.Redis.IdleTimeout,
+        })
+
+        // Test connection
+        ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+
+        if err := client.Ping(ctx).Err(); err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to connect to Redis", "error", err)
+                return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">log.Info("Successfully connected to Redis")
+
+        return &amp;redisCache{
+                client: client,
+                logger: log,
+                config: &amp;cfg.Cache.Redis,
+        }, nil</span>
+}
+
+// GetUser retrieves a user from cache
+func (c *redisCache) GetUser(ctx context.Context, userID string) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        key := c.userCacheKey(userID)
+        log := c.logger.WithField("user_id", userID).WithField("cache_key", key)
+
+        log.Debug("Getting user from cache")
+
+        var user domain.UserResponse
+        err := c.Get(ctx, key, &amp;user)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == redis.Nil </span><span class="cov0" title="0">{
+                        log.Debug("User cache miss")
+                        return nil, domain.ErrUserNotFound
+                }</span>
+                <span class="cov0" title="0">log.Error("Failed to get user from cache", "error", err)
+                return nil, err</span>
+        }
+
+        <span class="cov0" title="0">log.Debug("User cache hit")
+        return &amp;user, nil</span>
+}
+
+// SetUser stores a user in cache
+func (c *redisCache) SetUser(ctx context.Context, userID string, user *domain.UserResponse, ttl time.Duration) error <span class="cov0" title="0">{
+        key := c.userCacheKey(userID)
+        log := c.logger.WithField("user_id", userID).WithField("cache_key", key).WithField("ttl", ttl)
+
+        log.Debug("Setting user in cache")
+
+        err := c.Set(ctx, key, user, ttl)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to set user in cache", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("User cached successfully")
+        return nil</span>
+}
+
+// DeleteUser removes a user from cache
+func (c *redisCache) DeleteUser(ctx context.Context, userID string) error <span class="cov0" title="0">{
+        key := c.userCacheKey(userID)
+        log := c.logger.WithField("user_id", userID).WithField("cache_key", key)
+
+        log.Debug("Deleting user from cache")
+
+        err := c.Delete(ctx, key)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to delete user from cache", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("User deleted from cache")
+        return nil</span>
+}
+
+// Get retrieves a value from cache and unmarshals it into result
+func (c *redisCache) Get(ctx context.Context, key string, result interface{}) error <span class="cov0" title="0">{
+        log := c.logger.WithField("cache_key", key)
+
+        val, err := c.client.Get(ctx, key).Result()
+        if err != nil </span><span class="cov0" title="0">{
+                if err == redis.Nil </span><span class="cov0" title="0">{
+                        log.Debug("Cache miss")
+                        return redis.Nil
+                }</span>
+                <span class="cov0" title="0">log.Error("Redis GET failed", "error", err)
+                return err</span>
+        }
+
+        <span class="cov0" title="0">if err := json.Unmarshal([]byte(val), result); err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to unmarshal cached value", "error", err)
+                return fmt.Errorf("failed to unmarshal cached value: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Cache hit")
+        return nil</span>
+}
+
+// Set stores a value in cache with TTL
+func (c *redisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error <span class="cov0" title="0">{
+        log := c.logger.WithField("cache_key", key).WithField("ttl", ttl)
+
+        // Use default TTL if not specified
+        if ttl == 0 </span><span class="cov0" title="0">{
+                ttl = c.config.TTL
+        }</span>
+
+        <span class="cov0" title="0">data, err := json.Marshal(value)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to marshal value for caching", "error", err)
+                return fmt.Errorf("failed to marshal value: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">err = c.client.Set(ctx, key, data, ttl).Err()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Redis SET failed", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Value cached successfully")
+        return nil</span>
+}
+
+// Delete removes a key from cache
+func (c *redisCache) Delete(ctx context.Context, key string) error <span class="cov0" title="0">{
+        log := c.logger.WithField("cache_key", key)
+
+        err := c.client.Del(ctx, key).Err()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Redis DELETE failed", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Key deleted from cache")
+        return nil</span>
+}
+
+// Exists checks if a key exists in cache
+func (c *redisCache) Exists(ctx context.Context, key string) (bool, error) <span class="cov0" title="0">{
+        log := c.logger.WithField("cache_key", key)
+
+        count, err := c.client.Exists(ctx, key).Result()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Redis EXISTS failed", "error", err)
+                return false, err
+        }</span>
+
+        <span class="cov0" title="0">exists := count &gt; 0
+        log.Debug("Key existence check", "exists", exists)
+        return exists, nil</span>
+}
+
+// DeleteByPattern deletes all keys matching a pattern
+func (c *redisCache) DeleteByPattern(ctx context.Context, pattern string) error <span class="cov0" title="0">{
+        log := c.logger.WithField("pattern", pattern)
+
+        log.Debug("Deleting keys by pattern")
+
+        // Get all keys matching the pattern
+        keys, err := c.client.Keys(ctx, pattern).Result()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to get keys by pattern", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if len(keys) == 0 </span><span class="cov0" title="0">{
+                log.Debug("No keys found matching pattern")
+                return nil
+        }</span>
+
+        // Delete all matching keys
+        <span class="cov0" title="0">pipe := c.client.Pipeline()
+        for _, key := range keys </span><span class="cov0" title="0">{
+                pipe.Del(ctx, key)
+        }</span>
+
+        <span class="cov0" title="0">_, err = pipe.Exec(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to delete keys by pattern", "error", err, "key_count", len(keys))
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Info("Deleted keys by pattern", "key_count", len(keys))
+        return nil</span>
+}
+
+// Ping checks if Redis is reachable
+func (c *redisCache) Ping(ctx context.Context) error <span class="cov0" title="0">{
+        log := c.logger
+
+        err := c.client.Ping(ctx).Err()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Redis ping failed", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Redis ping successful")
+        return nil</span>
+}
+
+// Close closes the Redis connection
+func (c *redisCache) Close() error <span class="cov0" title="0">{
+        log := c.logger
+
+        log.Info("Closing Redis connection")
+
+        err := c.client.Close()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to close Redis connection", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Info("Redis connection closed")
+        return nil</span>
+}
+
+// userCacheKey generates a cache key for user data
+func (c *redisCache) userCacheKey(userID string) string <span class="cov0" title="0">{
+        return fmt.Sprintf("user:%s", userID)
+}</span>
+
+// InvalidateUserCache invalidates all cache entries related to a user
+func (c *redisCache) InvalidateUserCache(ctx context.Context, userID string) error <span class="cov0" title="0">{
+        log := c.logger.WithField("user_id", userID)
+
+        log.Debug("Invalidating user cache")
+
+        // Delete user-specific cache entries
+        userKey := c.userCacheKey(userID)
+        if err := c.Delete(ctx, userKey); err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to invalidate user cache", "error", err)
+                return err
+        }</span>
+
+        // Delete user list cache entries (if any)
+        <span class="cov0" title="0">listPattern := "users:list:*"
+        if err := c.DeleteByPattern(ctx, listPattern); err != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to invalidate user list cache", "error", err)
+                // Don't return error for list cache invalidation failures
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("User cache invalidated successfully")
+        return nil</span>
+}
+
+// Stats represents cache statistics
+type Stats struct {
+        Hits        int64   `json:"hits"`
+        Misses      int64   `json:"misses"`
+        Keys        int64   `json:"keys"`
+        Memory      int64   `json:"memory_bytes"`
+        Connections int     `json:"connections"`
+        HitRate     float64 `json:"hit_rate"`
+}
+
+// GetStats returns cache statistics
+func (c *redisCache) GetStats(ctx context.Context) (*Stats, error) <span class="cov0" title="0">{
+        log := c.logger
+
+        log.Debug("Getting cache statistics")
+
+        _, err := c.client.Info(ctx, "stats", "memory", "clients").Result()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to get Redis info", "error", err)
+                return nil, err
+        }</span>
+
+        // Parse Redis INFO output
+        <span class="cov0" title="0">stats := &amp;Stats{}
+
+        // Get database size
+        dbSize, err := c.client.DBSize(ctx).Result()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to get database size", "error", err)
+        }</span> else<span class="cov0" title="0"> {
+                stats.Keys = dbSize
+        }</span>
+
+        // Note: Parsing Redis INFO for detailed stats would require more complex parsing
+        // For now, we'll return basic stats
+        <span class="cov0" title="0">stats.Connections = c.config.PoolSize
+
+        log.Debug("Cache statistics retrieved", "keys", stats.Keys)
+        return stats, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Package config provides configuration management for the demo-go application,
+// loading settings from environment variables with sensible defaults.
+package config
+
+import (
+        "os"
+        "strconv"
+        "time"
+)
+
+// Config holds all configuration for the application
+type Config struct {
+        Server   ServerConfig
+        Database DatabaseConfig
+        Cache    CacheConfig
+        JWT      JWTConfig
+}
+
+// ServerConfig holds server-specific configuration
+type ServerConfig struct {
+        Port            string
+        Host            string
+        ReadTimeout     time.Duration
+        WriteTimeout    time.Duration
+        ShutdownTimeout time.Duration
+}
+
+// DatabaseConfig holds database configuration
+type DatabaseConfig struct {
+        MongoDB MongoDBConfig
+}
+
+// MongoDBConfig holds MongoDB-specific configuration
+type MongoDBConfig struct {
+        URI         string
+        Database    string
+        Timeout     time.Duration
+        MaxPoolSize int
+}
+
+// CacheConfig holds cache configuration
+type CacheConfig struct {
+        Redis RedisConfig
+}
+
+// RedisConfig holds Redis-specific configuration
+type RedisConfig struct {
+        Address      string
+        Password     string
+        DB           int
+        MaxRetries   int
+        PoolSize     int
+        MinIdleConns int
+        DialTimeout  time.Duration
+        ReadTimeout  time.Duration
+        WriteTimeout time.Duration
+        IdleTimeout  time.Duration
+        TTL          time.Duration
+}
+
+// JWTConfig holds JWT-specific configuration
+type JWTConfig struct {
+        SecretKey  string
+        Expiration time.Duration
+}
+
+// Default timeout constants
+const (
+        DefaultReadWriteTimeout = 15 * time.Second
+        DefaultShutdownTimeout  = 30 * time.Second
+        DefaultDBTimeout        = 10 * time.Second
+        DefaultMaxPoolSize      = 100
+        DefaultJWTExpiration    = 24 * time.Hour
+        DefaultCacheTTL         = 5 * time.Minute
+        DefaultRedisDataTTL     = 1 * time.Hour
+)
+
+// Load creates and returns a new Config with values from environment variables
+func Load() *Config <span class="cov0" title="0">{
+        return &amp;Config{
+                Server: ServerConfig{
+                        Port:            getEnv("SERVER_PORT", "8080"),
+                        Host:            getEnv("SERVER_HOST", "0.0.0.0"),
+                        ReadTimeout:     getDurationEnv("SERVER_READ_TIMEOUT", DefaultReadWriteTimeout),
+                        WriteTimeout:    getDurationEnv("SERVER_WRITE_TIMEOUT", DefaultReadWriteTimeout),
+                        ShutdownTimeout: getDurationEnv("SERVER_SHUTDOWN_TIMEOUT", DefaultShutdownTimeout),
+                },
+                Database: DatabaseConfig{
+                        MongoDB: MongoDBConfig{
+                                URI:         getEnv("MONGODB_URI", "mongodb://localhost:27017"),
+                                Database:    getEnv("MONGODB_DATABASE", "demo_clean"),
+                                Timeout:     getDurationEnv("MONGODB_TIMEOUT", DefaultDBTimeout),
+                                MaxPoolSize: getIntEnv("MONGODB_MAX_POOL_SIZE", DefaultMaxPoolSize),
+                        },
+                },
+                Cache: CacheConfig{
+                        Redis: RedisConfig{
+                                Address:      getEnv("REDIS_ADDRESS", "localhost:6379"),
+                                Password:     getEnv("REDIS_PASSWORD", ""),
+                                DB:           getIntEnv("REDIS_DB", 0),
+                                MaxRetries:   getIntEnv("REDIS_MAX_RETRIES", 3),
+                                PoolSize:     getIntEnv("REDIS_POOL_SIZE", 10),
+                                MinIdleConns: getIntEnv("REDIS_MIN_IDLE_CONNS", 2),
+                                DialTimeout:  getDurationEnv("REDIS_DIAL_TIMEOUT", 5*time.Second),
+                                ReadTimeout:  getDurationEnv("REDIS_READ_TIMEOUT", 3*time.Second),
+                                WriteTimeout: getDurationEnv("REDIS_WRITE_TIMEOUT", 3*time.Second),
+                                IdleTimeout:  getDurationEnv("REDIS_IDLE_TIMEOUT", DefaultCacheTTL),
+                                TTL:          getDurationEnv("REDIS_TTL", DefaultRedisDataTTL),
+                        },
+                },
+                JWT: JWTConfig{
+                        SecretKey:  getEnv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production"),
+                        Expiration: getDurationEnv("JWT_EXPIRATION", DefaultJWTExpiration),
+                },
+        }
+}</span>
+
+// getEnv gets an environment variable or returns a default value
+func getEnv(key, defaultValue string) string <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                return value
+        }</span>
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+// getIntEnv gets an environment variable as int or returns a default value
+func getIntEnv(key string, defaultValue int) int <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                if intValue, err := strconv.Atoi(value); err == nil </span><span class="cov0" title="0">{
+                        return intValue
+                }</span>
+        }
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+// getDurationEnv gets an environment variable as duration or returns a default value
+func getDurationEnv(key string, defaultValue time.Duration) time.Duration <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                if duration, err := time.ParseDuration(value); err == nil </span><span class="cov0" title="0">{
+                        return duration
+                }</span>
+        }
+        <span class="cov0" title="0">return defaultValue</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Package domain defines the core business entities, interfaces, and domain logic
+// for the demo-go application, including user management and authentication.
+package domain
+
+import (
+        "context"
+        "time"
+)
+
+// User represents a user entity
+type User struct {
+        ID        string    `json:"id" bson:"_id,omitempty"`
+        Name      string    `json:"name" bson:"name"`
+        Email     string    `json:"email" bson:"email"`
+        Password  string    `json:"-" bson:"password"` // Hidden from JSON
+        Role      string    `json:"role" bson:"role"`
+        CreatedAt time.Time `json:"created_at" bson:"created_at"`
+        UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+}
+
+// CreateUserRequest represents the request to create a new user
+type CreateUserRequest struct {
+        Name     string `json:"name" validate:"required,min=2,max=100"`
+        Email    string `json:"email" validate:"required,email"`
+        Password string `json:"password" validate:"required,min=6"`
+        Role     string `json:"role,omitempty"`
+}
+
+// UpdateUserRequest represents the request to update a user
+type UpdateUserRequest struct {
+        Name  *string `json:"name,omitempty" validate:"omitempty,min=2,max=100"`
+        Email *string `json:"email,omitempty" validate:"omitempty,email"`
+        Role  *string `json:"role,omitempty"`
+}
+
+// UpdateUserInput represents input for GraphQL user updates
+type UpdateUserInput struct {
+        Name  *string `json:"name,omitempty"`
+        Email *string `json:"email,omitempty"`
+        Role  *string `json:"role,omitempty"`
+}
+
+// LoginRequest represents user login credentials
+type LoginRequest struct {
+        Email    string `json:"email" validate:"required,email"`
+        Password string `json:"password" validate:"required"`
+}
+
+// UserResponse represents user data returned to clients (without sensitive data)
+type UserResponse struct {
+        ID        string    `json:"id"`
+        Name      string    `json:"name"`
+        Email     string    `json:"email"`
+        Role      string    `json:"role"`
+        CreatedAt time.Time `json:"created_at"`
+        UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ToResponse converts User entity to UserResponse
+func (u *User) ToResponse() *UserResponse <span class="cov0" title="0">{
+        return &amp;UserResponse{
+                ID:        u.ID,
+                Name:      u.Name,
+                Email:     u.Email,
+                Role:      u.Role,
+                CreatedAt: u.CreatedAt,
+                UpdatedAt: u.UpdatedAt,
+        }
+}</span>
+
+// UserRepository defines the interface for user data access
+type UserRepository interface {
+        Create(ctx context.Context, user *User) error
+        GetByID(ctx context.Context, id string) (*User, error)
+        GetByEmail(ctx context.Context, email string) (*User, error)
+        Update(ctx context.Context, id string, user *User) error
+        Delete(ctx context.Context, id string) error
+        List(ctx context.Context, limit, offset int) ([]*User, error)
+        Count(ctx context.Context) (int64, error)
+}
+
+// UserService defines the interface for user business logic
+type UserService interface {
+        Register(ctx context.Context, req *CreateUserRequest) (*UserResponse, error)
+        Login(ctx context.Context, req *LoginRequest) (string, *UserResponse, error) // returns token and user
+        GetProfile(ctx context.Context, userID string) (*UserResponse, error)
+        UpdateProfile(ctx context.Context, userID string, req *UpdateUserRequest) (*UserResponse, error)
+        GetUsers(ctx context.Context, limit, offset int) ([]*UserResponse, int64, error)
+        GetUserByID(ctx context.Context, id string) (*UserResponse, error)
+        DeleteUser(ctx context.Context, id string) error
+        RefreshToken(ctx context.Context, userID string) (string, error)
+}
+
+// TokenService defines the interface for JWT token operations
+type TokenService interface {
+        GenerateToken(user *User) (string, error)
+        ValidateToken(tokenString string) (*TokenClaims, error)
+        ExtractUserIDFromToken(tokenString string) (string, error)
+}
+
+// TokenClaims represents JWT token claims
+type TokenClaims struct {
+        UserID string `json:"user_id"`
+        Email  string `json:"email"`
+        Role   string `json:"role"`
+        Exp    int64  `json:"exp"`
+        Iat    int64  `json:"iat"`
+}
+
+// Error represents a domain-specific error with a code and message.
+type Error struct {
+        Code    string `json:"code"`
+        Message string `json:"message"`
+}
+
+func (e *Error) Error() string <span class="cov0" title="0">{
+        return e.Message
+}</span>
+
+var (
+        // ErrUserNotFound indicates that a requested user was not found
+        ErrUserNotFound       = &amp;Error{Code: "USER_NOT_FOUND", Message: "User not found"}
+        ErrUserAlreadyExists  = &amp;Error{Code: "USER_ALREADY_EXISTS", Message: "User with this email already exists"}
+        ErrInvalidCredentials = &amp;Error{Code: "INVALID_CREDENTIALS", Message: "Invalid email or password"}
+        ErrInvalidToken       = &amp;Error{Code: "INVALID_TOKEN", Message: "Invalid or expired token"}
+        ErrUnauthorized       = &amp;Error{Code: "UNAUTHORIZED", Message: "Unauthorized access"}
+        ErrForbidden          = &amp;Error{Code: "FORBIDDEN", Message: "Access forbidden"}
+        ErrValidationFailed   = &amp;Error{Code: "VALIDATION_FAILED", Message: "Validation failed"}
+)
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package graphql
+
+import (
+        "context"
+
+        "demo-go/internal/domain"
+)
+
+// This file will be automatically generated by gqlgen
+// These interfaces are defined here for reference
+
+// QueryResolver interface for query operations
+type QueryResolver interface {
+        GetUser(ctx context.Context, id string) (*domain.UserResponse, error)
+        GetUsers(ctx context.Context, limit *int, offset *int) ([]*domain.UserResponse, error)
+        SearchUsers(ctx context.Context, query string) ([]*domain.UserResponse, error)
+        Me(ctx context.Context) (*domain.UserResponse, error)
+}
+
+// MutationResolver interface for mutation operations
+type MutationResolver interface {
+        CreateUser(ctx context.Context, input CreateUserInput) (*domain.UserResponse, error)
+        UpdateUser(ctx context.Context, id string, input UpdateUserInput) (*domain.UserResponse, error)
+        DeleteUser(ctx context.Context, id string) (bool, error)
+}
+
+// SubscriptionResolver interface for subscription operations
+type SubscriptionResolver interface {
+        UserCreated(ctx context.Context) (&lt;-chan *domain.UserResponse, error)
+        UserUpdated(ctx context.Context) (&lt;-chan *domain.UserResponse, error)
+        UserDeleted(ctx context.Context) (&lt;-chan string, error)
+}
+
+// CreateUserInput represents the input for creating a new user via GraphQL.
+type CreateUserInput struct {
+        Name  string `json:"name"`
+        Email string `json:"email"`
+}
+
+type UpdateUserInput struct {
+        Name  *string `json:"name,omitempty"`
+        Email *string `json:"email,omitempty"`
+}
+
+// Config for the generated GraphQL server
+type Config struct {
+        Resolvers ResolverRoot
+}
+
+// ResolverRoot interface
+type ResolverRoot interface {
+        Query() QueryResolver
+        Mutation() MutationResolver
+        Subscription() SubscriptionResolver
+}
+
+// ExecutableSchema interface
+type ExecutableSchema interface {
+        Schema() string
+        Complexity(typeName, field string, childComplexity int, rawArgs map[string]interface{}) (int, bool)
+        Exec(ctx context.Context) ResponseData
+}
+
+// ResponseData represents GraphQL response data
+type ResponseData struct {
+        Data       interface{}            `json:"data,omitempty"`
+        Errors     []Error                `json:"errors,omitempty"`
+        Extensions map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// Error represents a GraphQL error
+type Error struct {
+        Message    string                 `json:"message"`
+        Path       []interface{}          `json:"path,omitempty"`
+        Locations  []Location             `json:"locations,omitempty"`
+        Extensions map[string]interface{} `json:"extensions,omitempty"`
+}
+
+// Location represents error location
+type Location struct {
+        Line   int `json:"line"`
+        Column int `json:"column"`
+}
+
+// NewExecutableSchema creates a new executable schema (this will be generated)
+func NewExecutableSchema(cfg Config) ExecutableSchema <span class="cov0" title="0">{
+        // This function will be generated by gqlgen
+        return nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Package graphql provides GraphQL schema definitions and resolvers
+// for the demo-go application, implementing user management operations
+// through a GraphQL API interface.
+package graphql
+
+import (
+        "context"
+        "strings"
+
+        "demo-go/internal/domain"
+        "demo-go/internal/logger"
+)
+
+// Resolver is the root resolver for GraphQL operations
+type Resolver struct {
+        userService domain.UserService
+        logger      *logger.Logger
+}
+
+// NewResolver creates a new GraphQL resolver
+func NewResolver(userService domain.UserService) *Resolver <span class="cov0" title="0">{
+        return &amp;Resolver{
+                userService: userService,
+                logger:      logger.GetGlobal().ForComponent("graphql-resolver"),
+        }
+}</span>
+
+// Query resolver
+func (r *Resolver) Query() QueryResolver <span class="cov0" title="0">{
+        return &amp;queryResolver{r}
+}</span>
+
+// Mutation resolver
+func (r *Resolver) Mutation() MutationResolver <span class="cov0" title="0">{
+        return &amp;mutationResolver{r}
+}</span>
+
+// Subscription resolver
+func (r *Resolver) Subscription() SubscriptionResolver <span class="cov0" title="0">{
+        return &amp;subscriptionResolver{r}
+}</span>
+
+// queryResolver implements QueryResolver interface
+type queryResolver struct{ *Resolver }
+
+// GetUser resolves the getUser query
+func (r *queryResolver) GetUser(ctx context.Context, id string) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("query", "getUser").WithField("user_id", id)
+
+        log.Debug("Resolving getUser query")
+
+        user, err := r.userService.GetUserByID(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to get user", "error", err)
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Successfully resolved getUser query", "user_email", user.Email)
+        return user, nil</span>
+}
+
+// GetUsers resolves the getUsers query
+func (r *queryResolver) GetUsers(ctx context.Context, limit, offset *int) ([]*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("query", "getUsers")
+
+        // Set default values if not provided
+        if limit == nil </span><span class="cov0" title="0">{
+                defaultLimit := 10
+                limit = &amp;defaultLimit
+        }</span>
+        <span class="cov0" title="0">if offset == nil </span><span class="cov0" title="0">{
+                defaultOffset := 0
+                offset = &amp;defaultOffset
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Resolving getUsers query", "limit", *limit, "offset", *offset)
+
+        users, _, err := r.userService.GetUsers(ctx, *limit, *offset)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to get users", "error", err)
+                return nil, err
+        }</span>
+
+        // Apply pagination
+        <span class="cov0" title="0">start := *offset
+        end := start + *limit
+
+        if start &gt;= len(users) </span><span class="cov0" title="0">{
+                return []*domain.UserResponse{}, nil
+        }</span>
+
+        <span class="cov0" title="0">if end &gt; len(users) </span><span class="cov0" title="0">{
+                end = len(users)
+        }</span>
+
+        <span class="cov0" title="0">paginatedUsers := users[start:end]
+        log.Debug("Successfully resolved getUsers query", "total_users", len(users), "returned_users", len(paginatedUsers))
+
+        return paginatedUsers, nil</span>
+}
+
+// SearchUsers resolves the searchUsers query
+func (r *queryResolver) SearchUsers(ctx context.Context, query string) ([]*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("query", "searchUsers").WithField("search_query", query)
+
+        log.Debug("Resolving searchUsers query")
+
+        // Get all users and filter by name or email
+        users, _, err := r.userService.GetUsers(ctx, 1000, 0) // Get up to 1000 users for search
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to get users for search", "error", err)
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var filteredUsers []*domain.UserResponse
+        for _, user := range users </span><span class="cov0" title="0">{
+                if containsIgnoreCase(user.Name, query) || containsIgnoreCase(user.Email, query) </span><span class="cov0" title="0">{
+                        filteredUsers = append(filteredUsers, user)
+                }</span>
+        }
+
+        <span class="cov0" title="0">log.Debug("Successfully resolved searchUsers query", "matches_found", len(filteredUsers))
+        return filteredUsers, nil</span>
+}
+
+// Me resolves the me query (returns current authenticated user)
+func (r *queryResolver) Me(ctx context.Context) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("query", "me")
+
+        log.Debug("Resolving me query")
+
+        // Get user ID from context (set by authentication middleware)
+        userID, ok := ctx.Value("userID").(string)
+        if !ok </span><span class="cov0" title="0">{
+                log.Warn("User ID not found in context")
+                return nil, domain.ErrUnauthorized
+        }</span>
+
+        <span class="cov0" title="0">user, err := r.userService.GetUserByID(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to get current user", "user_id", userID, "error", err)
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Successfully resolved me query", "user_email", user.Email)
+        return user, nil</span>
+}
+
+// mutationResolver implements MutationResolver interface
+type mutationResolver struct{ *Resolver }
+
+// CreateUser resolves the createUser mutation
+func (r *mutationResolver) CreateUser(ctx context.Context, input CreateUserInput) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("mutation", "createUser").WithField("email", input.Email)
+
+        log.Debug("Resolving createUser mutation")
+
+        createReq := &amp;domain.CreateUserRequest{
+                Name:     input.Name,
+                Email:    input.Email,
+                Password: "default-password", // In a real app, this should be provided or generated
+                Role:     "user",
+        }
+
+        user, err := r.userService.Register(ctx, createReq)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to create user", "error", err)
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">log.Info("Successfully created user", "user_id", user.ID, "user_email", user.Email)
+        return user, nil</span>
+}
+
+// UpdateUser resolves the updateUser mutation
+func (r *mutationResolver) UpdateUser(
+        ctx context.Context,
+        id string,
+        input UpdateUserInput,
+) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("mutation", "updateUser").WithField("user_id", id)
+
+        log.Debug("Resolving updateUser mutation")
+
+        updateReq := &amp;domain.UpdateUserRequest{}
+
+        if input.Name != nil </span><span class="cov0" title="0">{
+                updateReq.Name = input.Name
+        }</span>
+        <span class="cov0" title="0">if input.Email != nil </span><span class="cov0" title="0">{
+                updateReq.Email = input.Email
+        }</span>
+
+        <span class="cov0" title="0">user, err := r.userService.UpdateProfile(ctx, id, updateReq)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to update user", "error", err)
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">log.Info("Successfully updated user", "user_id", user.ID, "user_email", user.Email)
+        return user, nil</span>
+}
+
+// DeleteUser resolves the deleteUser mutation
+func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (bool, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("mutation", "deleteUser").WithField("user_id", id)
+
+        log.Debug("Resolving deleteUser mutation")
+
+        err := r.userService.DeleteUser(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to delete user", "error", err)
+                return false, err
+        }</span>
+
+        <span class="cov0" title="0">log.Info("Successfully deleted user", "user_id", id)
+        return true, nil</span>
+}
+
+// subscriptionResolver implements SubscriptionResolver interface
+type subscriptionResolver struct{ *Resolver }
+
+// UserCreated resolves the userCreated subscription
+func (r *subscriptionResolver) UserCreated(ctx context.Context) (&lt;-chan *domain.UserResponse, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("subscription", "userCreated")
+
+        log.Debug("Setting up userCreated subscription")
+
+        // Create a channel for user creation events
+        userChan := make(chan *domain.UserResponse, 1)
+
+        // In a real implementation, you would connect to a message broker or event system
+        // For now, we'll just return an empty channel
+        go func() </span><span class="cov0" title="0">{
+                &lt;-ctx.Done()
+                close(userChan)
+        }</span>()
+
+        <span class="cov0" title="0">return userChan, nil</span>
+}
+
+// UserUpdated resolves the userUpdated subscription
+func (r *subscriptionResolver) UserUpdated(ctx context.Context) (&lt;-chan *domain.UserResponse, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("subscription", "userUpdated")
+
+        log.Debug("Setting up userUpdated subscription")
+
+        userChan := make(chan *domain.UserResponse, 1)
+
+        go func() </span><span class="cov0" title="0">{
+                &lt;-ctx.Done()
+                close(userChan)
+        }</span>()
+
+        <span class="cov0" title="0">return userChan, nil</span>
+}
+
+// UserDeleted resolves the userDeleted subscription
+func (r *subscriptionResolver) UserDeleted(ctx context.Context) (&lt;-chan string, error) <span class="cov0" title="0">{
+        log := r.logger.ForService("subscription", "userDeleted")
+
+        log.Debug("Setting up userDeleted subscription")
+
+        userIDChan := make(chan string, 1)
+
+        go func() </span><span class="cov0" title="0">{
+                &lt;-ctx.Done()
+                close(userIDChan)
+        }</span>()
+
+        <span class="cov0" title="0">return userIDChan, nil</span>
+}
+
+// Helper functions
+
+// containsIgnoreCase checks if the haystack contains the needle (case-insensitive)
+func containsIgnoreCase(haystack, needle string) bool <span class="cov0" title="0">{
+        return strings.Contains(strings.ToLower(haystack), strings.ToLower(needle))
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">// Package handler provides HTTP request handlers for the demo-go application,
+// implementing RESTful endpoints for user management, authentication, and admin operations.
+package handler
+
+import (
+        "encoding/json"
+        "net/http"
+        "strconv"
+
+        "demo-go/internal/domain"
+        "demo-go/internal/logger"
+
+        "github.com/gorilla/mux"
+)
+
+// UserHandler handles HTTP requests for user operations
+type UserHandler struct {
+        userService domain.UserService
+        logger      *logger.Logger
+}
+
+// NewUserHandler creates a new user handler
+func NewUserHandler(userService domain.UserService) *UserHandler <span class="cov0" title="0">{
+        return &amp;UserHandler{
+                userService: userService,
+                logger:      logger.GetGlobal().ForComponent("handler"),
+        }
+}</span>
+
+// Register handles user registration
+func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        log := h.logger.ForRequest(r.Method, r.URL.Path, h.getRequestID(r))
+
+        var req domain.CreateUserRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;req); err != nil </span><span class="cov0" title="0">{
+                log.Warn("Invalid request body for registration", "error", err)
+                h.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body", err.Error())
+                return
+        }</span>
+
+        <span class="cov0" title="0">log.Info("User registration attempt", "email", req.Email)
+
+        user, err := h.userService.Register(r.Context(), &amp;req)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("User registration failed", "email", req.Email, "error", err)
+                h.handleServiceError(w, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">log.Info("User registered successfully", "user_id", user.ID, "email", user.Email)
+        h.writeSuccessResponse(w, http.StatusCreated, "User registered successfully", user)</span>
+}
+
+// Login handles user authentication
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        log := h.logger.ForRequest(r.Method, r.URL.Path, h.getRequestID(r))
+
+        var req domain.LoginRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;req); err != nil </span><span class="cov0" title="0">{
+                log.Warn("Invalid request body for login", "error", err)
+                h.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body", err.Error())
+                return
+        }</span>
+
+        <span class="cov0" title="0">log.Info("User login attempt", "email", req.Email)
+
+        token, user, err := h.userService.Login(r.Context(), &amp;req)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("User login failed", "email", req.Email, "error", err)
+                h.handleServiceError(w, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">log.Info("User logged in successfully", "user_id", user.ID, "email", user.Email)
+
+        response := map[string]interface{}{
+                "token": token,
+                "user":  user,
+        }
+
+        h.writeSuccessResponse(w, http.StatusOK, "Login successful", response)</span>
+}
+
+// GetProfile handles getting user profile
+func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        log := h.logger.ForRequest(r.Method, r.URL.Path, h.getRequestID(r))
+
+        userID := h.getUserIDFromContext(r)
+        if userID == "" </span><span class="cov0" title="0">{
+                log.Warn("Unauthorized profile access attempt")
+                h.writeErrorResponse(w, http.StatusUnauthorized, "Unauthorized", "User ID not found in context")
+                return
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Getting user profile", "user_id", userID)
+
+        user, err := h.userService.GetProfile(r.Context(), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to get user profile", "user_id", userID, "error", err)
+                h.handleServiceError(w, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">log.Info("User profile retrieved successfully", "user_id", userID)
+        h.writeSuccessResponse(w, http.StatusOK, "Profile retrieved successfully", user)</span>
+}
+
+// UpdateProfile handles updating user profile
+func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        log := h.logger.ForRequest(r.Method, r.URL.Path, h.getRequestID(r))
+
+        userID := h.getUserIDFromContext(r)
+        if userID == "" </span><span class="cov0" title="0">{
+                log.Warn("Unauthorized profile update attempt")
+                h.writeErrorResponse(w, http.StatusUnauthorized, "Unauthorized", "User ID not found in context")
+                return
+        }</span>
+
+        <span class="cov0" title="0">var req domain.UpdateUserRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;req); err != nil </span><span class="cov0" title="0">{
+                log.Warn("Invalid request body for profile update", "user_id", userID, "error", err)
+                h.writeErrorResponse(w, http.StatusBadRequest, "Invalid request body", err.Error())
+                return
+        }</span>
+
+        <span class="cov0" title="0">log.Info("Profile update attempt", "user_id", userID)
+
+        user, err := h.userService.UpdateProfile(r.Context(), userID, &amp;req)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Profile update failed", "user_id", userID, "error", err)
+                h.handleServiceError(w, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">h.writeSuccessResponse(w, http.StatusOK, "Profile updated successfully", user)</span>
+}
+
+// GetUsers handles getting all users (admin only)
+func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        // Parse query parameters
+        limitStr := r.URL.Query().Get("limit")
+        offsetStr := r.URL.Query().Get("offset")
+
+        limit := 10 // default
+        if limitStr != "" </span><span class="cov0" title="0">{
+                if l, err := strconv.Atoi(limitStr); err == nil &amp;&amp; l &gt; 0 </span><span class="cov0" title="0">{
+                        limit = l
+                }</span>
+        }
+
+        <span class="cov0" title="0">offset := 0 // default
+        if offsetStr != "" </span><span class="cov0" title="0">{
+                if o, err := strconv.Atoi(offsetStr); err == nil &amp;&amp; o &gt;= 0 </span><span class="cov0" title="0">{
+                        offset = o
+                }</span>
+        }
+
+        <span class="cov0" title="0">users, total, err := h.userService.GetUsers(r.Context(), limit, offset)
+        if err != nil </span><span class="cov0" title="0">{
+                h.handleServiceError(w, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">response := map[string]interface{}{
+                "users":  users,
+                "total":  total,
+                "limit":  limit,
+                "offset": offset,
+        }
+
+        h.writeSuccessResponse(w, http.StatusOK, "Users retrieved successfully", response)</span>
+}
+
+// GetUserByID handles getting a specific user by ID (admin only)
+func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        vars := mux.Vars(r)
+        userID := vars["id"]
+
+        if userID == "" </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, http.StatusBadRequest, "Missing user ID", "User ID is required")
+                return
+        }</span>
+
+        <span class="cov0" title="0">user, err := h.userService.GetUserByID(r.Context(), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                h.handleServiceError(w, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">h.writeSuccessResponse(w, http.StatusOK, "User retrieved successfully", user)</span>
+}
+
+// DeleteUser handles deleting a user (admin only)
+func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        vars := mux.Vars(r)
+        userID := vars["id"]
+
+        if userID == "" </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, http.StatusBadRequest, "Missing user ID", "User ID is required")
+                return
+        }</span>
+
+        <span class="cov0" title="0">err := h.userService.DeleteUser(r.Context(), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                h.handleServiceError(w, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">h.writeSuccessResponse(w, http.StatusOK, "User deleted successfully", nil)</span>
+}
+
+// RefreshToken handles token refresh
+func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        userID := h.getUserIDFromContext(r)
+        if userID == "" </span><span class="cov0" title="0">{
+                h.writeErrorResponse(w, http.StatusUnauthorized, "Unauthorized", "User ID not found in context")
+                return
+        }</span>
+
+        <span class="cov0" title="0">token, err := h.userService.RefreshToken(r.Context(), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                h.handleServiceError(w, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">response := map[string]string{
+                "token": token,
+        }
+
+        h.writeSuccessResponse(w, http.StatusOK, "Token refreshed successfully", response)</span>
+}
+
+// Health check endpoint
+func (h *UserHandler) Health(w http.ResponseWriter, _ *http.Request) <span class="cov0" title="0">{
+        response := map[string]interface{}{
+                "status":    "healthy",
+                "service":   "clean-architecture-api",
+                "timestamp": "2025-09-18T00:00:00Z",
+        }
+
+        h.writeSuccessResponse(w, http.StatusOK, "Service is healthy", response)
+}</span>
+
+// Helper methods
+
+func (h *UserHandler) getUserIDFromContext(r *http.Request) string <span class="cov0" title="0">{
+        if userID := r.Context().Value("user_id"); userID != nil </span><span class="cov0" title="0">{
+                if id, ok := userID.(string); ok </span><span class="cov0" title="0">{
+                        return id
+                }</span>
+        }
+        <span class="cov0" title="0">return ""</span>
+}
+
+func (h *UserHandler) handleServiceError(w http.ResponseWriter, err error) <span class="cov0" title="0">{
+        if domainErr, ok := err.(*domain.Error); ok </span><span class="cov0" title="0">{
+                switch domainErr.Code </span>{
+                case "USER_NOT_FOUND":<span class="cov0" title="0">
+                        h.writeErrorResponse(w, http.StatusNotFound, domainErr.Message, domainErr.Code)</span>
+                case "USER_ALREADY_EXISTS":<span class="cov0" title="0">
+                        h.writeErrorResponse(w, http.StatusConflict, domainErr.Message, domainErr.Code)</span>
+                case "INVALID_CREDENTIALS":<span class="cov0" title="0">
+                        h.writeErrorResponse(w, http.StatusUnauthorized, domainErr.Message, domainErr.Code)</span>
+                case "INVALID_TOKEN":<span class="cov0" title="0">
+                        h.writeErrorResponse(w, http.StatusUnauthorized, domainErr.Message, domainErr.Code)</span>
+                case "UNAUTHORIZED":<span class="cov0" title="0">
+                        h.writeErrorResponse(w, http.StatusUnauthorized, domainErr.Message, domainErr.Code)</span>
+                case "FORBIDDEN":<span class="cov0" title="0">
+                        h.writeErrorResponse(w, http.StatusForbidden, domainErr.Message, domainErr.Code)</span>
+                case "VALIDATION_FAILED":<span class="cov0" title="0">
+                        h.writeErrorResponse(w, http.StatusBadRequest, domainErr.Message, domainErr.Code)</span>
+                default:<span class="cov0" title="0">
+                        h.writeErrorResponse(w, http.StatusInternalServerError, "Internal server error", "INTERNAL_ERROR")</span>
+                }
+        } else<span class="cov0" title="0"> {
+                h.writeErrorResponse(w, http.StatusInternalServerError, "Internal server error", "INTERNAL_ERROR")
+        }</span>
+}
+
+func (h *UserHandler) writeSuccessResponse(w http.ResponseWriter, statusCode int, message string, data interface{}) <span class="cov0" title="0">{
+        response := map[string]interface{}{
+                "success": true,
+                "message": message,
+                "data":    data,
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(statusCode)
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                // If we can't encode the response, there's not much we can do
+                // The status code has already been set
+                return
+        }</span>
+}
+
+func (h *UserHandler) writeErrorResponse(w http.ResponseWriter, statusCode int, message, code string) <span class="cov0" title="0">{
+        response := map[string]interface{}{
+                "success": false,
+                "message": message,
+                "error": map[string]string{
+                        "code": code,
+                },
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(statusCode)
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                // If we can't encode the response, there's not much we can do
+                // The status code has already been set
+                return
+        }</span>
+}
+
+// Helper methods
+func (h *UserHandler) getRequestID(r *http.Request) string <span class="cov0" title="0">{
+        if requestID := r.Header.Get("X-Request-ID"); requestID != "" </span><span class="cov0" title="0">{
+                return requestID
+        }</span>
+        <span class="cov0" title="0">if requestID := r.Context().Value("request_id"); requestID != nil </span><span class="cov0" title="0">{
+                if id, ok := requestID.(string); ok </span><span class="cov0" title="0">{
+                        return id
+                }</span>
+        }
+        <span class="cov0" title="0">return "unknown"</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Package logger provides structured logging functionality for the demo-go application
+// using zap as the underlying logging framework with configurable levels and formats.
+package logger
+
+import (
+        "os"
+
+        "go.uber.org/zap"
+        "go.uber.org/zap/zapcore"
+)
+
+// Logger wraps zap.SugaredLogger to provide structured logging
+type Logger struct {
+        *zap.SugaredLogger
+}
+
+// Config holds logger configuration
+type Config struct {
+        Level       string `json:"level"`       // debug, info, warn, error
+        Environment string `json:"environment"` // development, production
+        Format      string `json:"format"`      // json, console
+}
+
+// DefaultConfig returns default logger configuration
+func DefaultConfig() *Config <span class="cov0" title="0">{
+        return &amp;Config{
+                Level:       getEnvOrDefault("LOG_LEVEL", "info"),
+                Environment: getEnvOrDefault("ENVIRONMENT", "development"),
+                Format:      getEnvOrDefault("LOG_FORMAT", "console"),
+        }
+}</span>
+
+// New creates a new logger instance with the given configuration
+func New(config *Config) (*Logger, error) <span class="cov0" title="0">{
+        var zapConfig zap.Config
+
+        // Set environment-specific defaults
+        if config.Environment == "production" </span><span class="cov0" title="0">{
+                zapConfig = zap.NewProductionConfig()
+                zapConfig.DisableStacktrace = true
+        }</span> else<span class="cov0" title="0"> {
+                zapConfig = zap.NewDevelopmentConfig()
+        }</span>
+
+        // Set log level
+        <span class="cov0" title="0">level, err := zapcore.ParseLevel(config.Level)
+        if err != nil </span><span class="cov0" title="0">{
+                level = zapcore.InfoLevel
+        }</span>
+        <span class="cov0" title="0">zapConfig.Level = zap.NewAtomicLevelAt(level)
+
+        // Set encoding format
+        if config.Format == "json" </span><span class="cov0" title="0">{
+                zapConfig.Encoding = "json"
+        }</span> else<span class="cov0" title="0"> {
+                zapConfig.Encoding = "console"
+                zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+        }</span>
+
+        // Customize encoder config for better readability
+        <span class="cov0" title="0">zapConfig.EncoderConfig.TimeKey = "timestamp"
+        zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+        zapConfig.EncoderConfig.CallerKey = "caller"
+        zapConfig.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
+
+        // Build the logger
+        zapLogger, err := zapConfig.Build(zap.AddCallerSkip(1))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Logger{
+                SugaredLogger: zapLogger.Sugar(),
+        }, nil</span>
+}
+
+// NewDefault creates a logger with default configuration
+func NewDefault() (*Logger, error) <span class="cov0" title="0">{
+        return New(DefaultConfig())
+}</span>
+
+// WithFields adds structured context fields to the logger
+func (l *Logger) WithFields(fields map[string]interface{}) *Logger <span class="cov0" title="0">{
+        args := make([]interface{}, 0, len(fields)*2)
+        for k, v := range fields </span><span class="cov0" title="0">{
+                args = append(args, k, v)
+        }</span>
+        <span class="cov0" title="0">return &amp;Logger{
+                SugaredLogger: l.SugaredLogger.With(args...),
+        }</span>
+}
+
+// WithField adds a single structured context field to the logger
+func (l *Logger) WithField(key string, value interface{}) *Logger <span class="cov0" title="0">{
+        return &amp;Logger{
+                SugaredLogger: l.SugaredLogger.With(key, value),
+        }
+}</span>
+
+// WithError adds an error field to the logger
+func (l *Logger) WithError(err error) *Logger <span class="cov0" title="0">{
+        return l.WithField("error", err.Error())
+}</span>
+
+// WithRequestID adds a request ID field to the logger
+func (l *Logger) WithRequestID(requestID string) *Logger <span class="cov0" title="0">{
+        return l.WithField("request_id", requestID)
+}</span>
+
+// WithUserID adds a user ID field to the logger
+func (l *Logger) WithUserID(userID string) *Logger <span class="cov0" title="0">{
+        return l.WithField("user_id", userID)
+}</span>
+
+// ForComponent creates a logger for a specific component
+func (l *Logger) ForComponent(component string) *Logger <span class="cov0" title="0">{
+        return l.WithField("component", component)
+}</span>
+
+// ForRequest creates a logger for a specific HTTP request
+func (l *Logger) ForRequest(method, path, requestID string) *Logger <span class="cov0" title="0">{
+        return l.WithFields(map[string]interface{}{
+                "method":     method,
+                "path":       path,
+                "request_id": requestID,
+                "component":  "http",
+        })
+}</span>
+
+// ForService creates a logger for a service layer operation
+func (l *Logger) ForService(service, operation string) *Logger <span class="cov0" title="0">{
+        return l.WithFields(map[string]interface{}{
+                "service":   service,
+                "operation": operation,
+                "layer":     "service",
+        })
+}</span>
+
+// ForRepository creates a logger for a repository layer operation
+func (l *Logger) ForRepository(repository, operation string) *Logger <span class="cov0" title="0">{
+        return l.WithFields(map[string]interface{}{
+                "repository": repository,
+                "operation":  operation,
+                "layer":      "repository",
+        })
+}</span>
+
+// Sync flushes any buffered log entries
+func (l *Logger) Sync() error <span class="cov0" title="0">{
+        return l.SugaredLogger.Sync()
+}</span>
+
+// getEnvOrDefault returns the environment variable value or a default value
+func getEnvOrDefault(key, defaultValue string) string <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                return value
+        }</span>
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+// Global logger instance for convenience
+var globalLogger *Logger
+
+// InitGlobal initializes the global logger
+func InitGlobal(config *Config) error <span class="cov0" title="0">{
+        logger, err := New(config)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">globalLogger = logger
+        return nil</span>
+}
+
+// GetGlobal returns the global logger instance
+func GetGlobal() *Logger <span class="cov0" title="0">{
+        if globalLogger == nil </span><span class="cov0" title="0">{
+                // Fallback to default logger if not initialized
+                logger, err := NewDefault()
+                if err != nil </span><span class="cov0" title="0">{
+                        // Fallback to a basic logger if NewDefault fails
+                        panic("Failed to create default logger: " + err.Error())</span>
+                }
+                <span class="cov0" title="0">globalLogger = logger</span>
+        }
+        <span class="cov0" title="0">return globalLogger</span>
+}
+
+// Debug logs a debug-level message using the global logger instance.
+func Debug(args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Debug(args...)
+}</span>
+
+// Info logs an info message using the global logger
+func Info(args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Info(args...)
+}</span>
+
+// Warn logs a warning message using the global logger
+func Warn(args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Warn(args...)
+}</span>
+
+// Error logs an error message using the global logger
+func Error(args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Error(args...)
+}</span>
+
+// Fatal logs a fatal message and exits using the global logger
+func Fatal(args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Fatal(args...)
+}</span>
+
+// Debugf logs a formatted debug message using the global logger
+func Debugf(template string, args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Debugf(template, args...)
+}</span>
+
+// Infof logs a formatted info message using the global logger
+func Infof(template string, args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Infof(template, args...)
+}</span>
+
+// Warnf logs a formatted warning message using the global logger
+func Warnf(template string, args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Warnf(template, args...)
+}</span>
+
+// Errorf logs a formatted error message using the global logger
+func Errorf(template string, args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Errorf(template, args...)
+}</span>
+
+// Fatalf logs a formatted fatal message and exits using the global logger
+func Fatalf(template string, args ...interface{}) <span class="cov0" title="0">{
+        GetGlobal().Fatalf(template, args...)
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package middleware provides HTTP middleware functions for the demo-go application,
+// including JWT authentication, authorization, logging, and request processing.
+package middleware
+
+import (
+        "context"
+        "net/http"
+        "strings"
+
+        "demo-go/internal/domain"
+)
+
+// Context key types to avoid collisions
+type contextKey string
+
+const (
+        userIDKey    contextKey = "user_id"
+        userEmailKey contextKey = "user_email"
+        userRoleKey  contextKey = "user_role"
+)
+
+// Helper functions to safely retrieve context values
+
+// GetUserIDFromContext extracts the user ID from the request context
+func GetUserIDFromContext(ctx context.Context) (string, bool) <span class="cov0" title="0">{
+        userID, ok := ctx.Value(userIDKey).(string)
+        return userID, ok
+}</span>
+
+// GetUserEmailFromContext extracts the user email from the request context
+func GetUserEmailFromContext(ctx context.Context) (string, bool) <span class="cov0" title="0">{
+        email, ok := ctx.Value(userEmailKey).(string)
+        return email, ok
+}</span>
+
+// GetUserRoleFromContext extracts the user role from the request context
+func GetUserRoleFromContext(ctx context.Context) (string, bool) <span class="cov0" title="0">{
+        role, ok := ctx.Value(userRoleKey).(string)
+        return role, ok
+}</span>
+
+// JWTMiddleware provides JWT authentication middleware
+type JWTMiddleware struct {
+        tokenService domain.TokenService
+        skipPaths    map[string]bool
+}
+
+// NewJWTMiddleware creates a new JWT middleware
+func NewJWTMiddleware(tokenService domain.TokenService) *JWTMiddleware <span class="cov0" title="0">{
+        // Define paths that should skip authentication
+        skipPaths := map[string]bool{
+                "/health":        true,
+                "/auth/register": true,
+                "/auth/login":    true,
+        }
+
+        return &amp;JWTMiddleware{
+                tokenService: tokenService,
+                skipPaths:    skipPaths,
+        }
+}</span>
+
+// Authenticate is a middleware that validates JWT tokens
+func (m *JWTMiddleware) Authenticate(next http.Handler) http.Handler <span class="cov0" title="0">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                // Skip authentication for certain paths
+                if m.shouldSkipPath(r.URL.Path) </span><span class="cov0" title="0">{
+                        next.ServeHTTP(w, r)
+                        return
+                }</span>
+
+                // Extract token from Authorization header
+                <span class="cov0" title="0">tokenString := m.extractTokenFromHeader(r)
+                if tokenString == "" </span><span class="cov0" title="0">{
+                        m.writeUnauthorizedResponse(w, "Missing or invalid Authorization header")
+                        return
+                }</span>
+
+                // Validate token
+                <span class="cov0" title="0">claims, err := m.tokenService.ValidateToken(tokenString)
+                if err != nil </span><span class="cov0" title="0">{
+                        m.writeUnauthorizedResponse(w, "Invalid or expired token")
+                        return
+                }</span>
+
+                // Add user information to request context
+                <span class="cov0" title="0">ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
+                ctx = context.WithValue(ctx, userEmailKey, claims.Email)
+                ctx = context.WithValue(ctx, userRoleKey, claims.Role)
+
+                // Call next handler with updated context
+                next.ServeHTTP(w, r.WithContext(ctx))</span>
+        })
+}
+
+// RequireRole is a middleware that checks if user has required role
+func (m *JWTMiddleware) RequireRole(role string) func(http.Handler) http.Handler <span class="cov0" title="0">{
+        return func(next http.Handler) http.Handler </span><span class="cov0" title="0">{
+                return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                        userRole := r.Context().Value(userRoleKey)
+                        if userRole == nil </span><span class="cov0" title="0">{
+                                m.writeForbiddenResponse(w, "User role not found in context")
+                                return
+                        }</span>
+
+                        <span class="cov0" title="0">roleStr, ok := userRole.(string)
+                        if !ok || roleStr != role </span><span class="cov0" title="0">{
+                                m.writeForbiddenResponse(w, "Insufficient permissions")
+                                return
+                        }</span>
+
+                        <span class="cov0" title="0">next.ServeHTTP(w, r)</span>
+                })
+        }
+}
+
+// RequireAdmin is a middleware that checks if user is admin
+func (m *JWTMiddleware) RequireAdmin(next http.Handler) http.Handler <span class="cov0" title="0">{
+        return m.RequireRole("admin")(next)
+}</span>
+
+// Helper methods
+
+func (m *JWTMiddleware) shouldSkipPath(path string) bool <span class="cov0" title="0">{
+        return m.skipPaths[path]
+}</span>
+
+func (m *JWTMiddleware) extractTokenFromHeader(r *http.Request) string <span class="cov0" title="0">{
+        authHeader := r.Header.Get("Authorization")
+        if authHeader == "" </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+
+        // Check if header starts with "Bearer "
+        <span class="cov0" title="0">const bearerPrefix = "Bearer "
+        if !strings.HasPrefix(authHeader, bearerPrefix) </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+
+        // Extract token part
+        <span class="cov0" title="0">return strings.TrimSpace(authHeader[len(bearerPrefix):])</span>
+}
+
+func (m *JWTMiddleware) writeUnauthorizedResponse(w http.ResponseWriter, message string) <span class="cov0" title="0">{
+        m.writeJSONError(w, http.StatusUnauthorized, message, "UNAUTHORIZED")
+}</span>
+
+func (m *JWTMiddleware) writeForbiddenResponse(w http.ResponseWriter, message string) <span class="cov0" title="0">{
+        m.writeJSONError(w, http.StatusForbidden, message, "FORBIDDEN")
+}</span>
+
+func (m *JWTMiddleware) writeJSONError(w http.ResponseWriter, statusCode int, message, code string) <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(statusCode)
+
+        response := `{
+                "success": false,
+                "message": "` + message + `",
+                "error": {
+                        "code": "` + code + `"
+                }
+        }`
+
+        if _, err := w.Write([]byte(response)); err != nil </span>{<span class="cov0" title="0">
+                // Log the error but there's not much we can do at this point
+                // since we're already in an error handling path
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package middleware
+
+import (
+        "context"
+        "net/http"
+        "time"
+
+        "demo-go/internal/logger"
+
+        "github.com/google/uuid"
+)
+
+// Context key types to avoid collisions
+type loggingContextKey string
+
+const (
+        requestIDKey loggingContextKey = "request_id"
+)
+
+// LoggingMiddleware provides request logging with structured output
+func LoggingMiddleware(baseLogger *logger.Logger) func(http.Handler) http.Handler <span class="cov0" title="0">{
+        return func(next http.Handler) http.Handler </span><span class="cov0" title="0">{
+                return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                        start := time.Now()
+                        requestID := generateRequestID(r)
+
+                        // Create logger for this request
+                        log := baseLogger.ForRequest(r.Method, r.URL.Path, requestID)
+
+                        // Add request ID to context for downstream use
+                        ctx := r.Context()
+                        ctx = requestIDContext(ctx, requestID)
+                        r = r.WithContext(ctx)
+
+                        // Add request ID header to response
+                        w.Header().Set("X-Request-ID", requestID)
+
+                        // Create a response writer wrapper to capture status code and size
+                        wrapper := &amp;responseWriterWrapper{
+                                ResponseWriter: w,
+                                statusCode:     http.StatusOK,
+                                size:           0,
+                        }
+
+                        // Log incoming request
+                        log.Info("Request started",
+                                "user_agent", r.UserAgent(),
+                                "remote_addr", r.RemoteAddr,
+                                "content_length", r.ContentLength,
+                        )
+
+                        // Call next handler
+                        next.ServeHTTP(wrapper, r)
+
+                        // Log completed request
+                        duration := time.Since(start)
+                        log.Info("Request completed",
+                                "status_code", wrapper.statusCode,
+                                "duration_ms", duration.Milliseconds(),
+                                "response_size", wrapper.size,
+                        )
+                }</span>)
+        }
+}
+
+// generateRequestID creates or extracts a request ID
+func generateRequestID(r *http.Request) string <span class="cov0" title="0">{
+        if requestID := r.Header.Get("X-Request-ID"); requestID != "" </span><span class="cov0" title="0">{
+                return requestID
+        }</span>
+        <span class="cov0" title="0">return uuid.New().String()</span>
+}
+
+// requestIDContext adds request ID to context
+func requestIDContext(ctx context.Context, requestID string) context.Context <span class="cov0" title="0">{
+        return context.WithValue(ctx, requestIDKey, requestID)
+}</span>
+
+// responseWriterWrapper wraps http.ResponseWriter to capture status code and response size
+type responseWriterWrapper struct {
+        http.ResponseWriter
+        statusCode int
+        size       int64
+}
+
+func (w *responseWriterWrapper) WriteHeader(statusCode int) <span class="cov0" title="0">{
+        w.statusCode = statusCode
+        w.ResponseWriter.WriteHeader(statusCode)
+}</span>
+
+func (w *responseWriterWrapper) Write(data []byte) (int, error) <span class="cov0" title="0">{
+        size, err := w.ResponseWriter.Write(data)
+        w.size += int64(size)
+        return size, err
+}</span>
+
+// CORSMiddleware provides CORS headers
+func CORSMiddleware(next http.Handler) http.Handler <span class="cov0" title="0">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                w.Header().Set("Access-Control-Allow-Origin", "*")
+                w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+                w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+                // Handle preflight requests
+                if r.Method == "OPTIONS" </span><span class="cov0" title="0">{
+                        w.WriteHeader(http.StatusOK)
+                        return
+                }</span>
+
+                <span class="cov0" title="0">next.ServeHTTP(w, r)</span>
+        })
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package repository
+
+import (
+        "context"
+        "strconv"
+        "sync"
+        "time"
+
+        "demo-go/internal/domain"
+)
+
+// memoryUserRepository implements domain.UserRepository using in-memory storage
+type memoryUserRepository struct {
+        users  map[string]*domain.User
+        emails map[string]string // email -&gt; userID mapping for unique constraint
+        mu     sync.RWMutex
+        nextID int
+}
+
+// NewMemoryUserRepository creates a new in-memory user repository
+func NewMemoryUserRepository() domain.UserRepository <span class="cov0" title="0">{
+        return &amp;memoryUserRepository{
+                users:  make(map[string]*domain.User),
+                emails: make(map[string]string),
+                nextID: 1,
+        }
+}</span>
+
+// Create creates a new user in memory
+func (r *memoryUserRepository) Create(ctx context.Context, user *domain.User) error <span class="cov0" title="0">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        // Check if email already exists
+        if _, exists := r.emails[user.Email]; exists </span><span class="cov0" title="0">{
+                return domain.ErrUserAlreadyExists
+        }</span>
+
+        // Generate ID if not provided
+        <span class="cov0" title="0">if user.ID == "" </span><span class="cov0" title="0">{
+                user.ID = strconv.Itoa(r.nextID)
+                r.nextID++
+        }</span>
+
+        // Set creation time
+        <span class="cov0" title="0">user.CreatedAt = time.Now()
+        user.UpdatedAt = time.Now()
+
+        // Store user
+        r.users[user.ID] = user
+        r.emails[user.Email] = user.ID
+
+        return nil</span>
+}
+
+// GetByID retrieves a user by ID from memory
+func (r *memoryUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) <span class="cov0" title="0">{
+        r.mu.RLock()
+        defer r.mu.RUnlock()
+
+        user, exists := r.users[id]
+        if !exists </span><span class="cov0" title="0">{
+                return nil, domain.ErrUserNotFound
+        }</span>
+
+        // Return a copy to prevent external modifications
+        <span class="cov0" title="0">userCopy := *user
+        return &amp;userCopy, nil</span>
+}
+
+// GetByEmail retrieves a user by email from memory
+func (r *memoryUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) <span class="cov0" title="0">{
+        r.mu.RLock()
+        defer r.mu.RUnlock()
+
+        userID, exists := r.emails[email]
+        if !exists </span><span class="cov0" title="0">{
+                return nil, domain.ErrUserNotFound
+        }</span>
+
+        <span class="cov0" title="0">user := r.users[userID]
+        // Return a copy to prevent external modifications
+        userCopy := *user
+        return &amp;userCopy, nil</span>
+}
+
+// Update updates a user in memory
+func (r *memoryUserRepository) Update(ctx context.Context, id string, user *domain.User) error <span class="cov0" title="0">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        existingUser, exists := r.users[id]
+        if !exists </span><span class="cov0" title="0">{
+                return domain.ErrUserNotFound
+        }</span>
+
+        // Check if email is being changed and if new email already exists
+        <span class="cov0" title="0">if user.Email != existingUser.Email </span><span class="cov0" title="0">{
+                if _, emailExists := r.emails[user.Email]; emailExists </span><span class="cov0" title="0">{
+                        return domain.ErrUserAlreadyExists
+                }</span>
+
+                // Remove old email mapping and add new one
+                <span class="cov0" title="0">delete(r.emails, existingUser.Email)
+                r.emails[user.Email] = id</span>
+        }
+
+        // Update user fields
+        <span class="cov0" title="0">user.ID = id                            // Ensure ID doesn't change
+        user.CreatedAt = existingUser.CreatedAt // Preserve creation time
+        user.UpdatedAt = time.Now()
+
+        // Store updated user
+        r.users[id] = user
+
+        return nil</span>
+}
+
+// Delete deletes a user from memory
+func (r *memoryUserRepository) Delete(ctx context.Context, id string) error <span class="cov0" title="0">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        user, exists := r.users[id]
+        if !exists </span><span class="cov0" title="0">{
+                return domain.ErrUserNotFound
+        }</span>
+
+        // Remove from both maps
+        <span class="cov0" title="0">delete(r.users, id)
+        delete(r.emails, user.Email)
+
+        return nil</span>
+}
+
+// List retrieves users with pagination from memory
+func (r *memoryUserRepository) List(ctx context.Context, limit, offset int) ([]*domain.User, error) <span class="cov0" title="0">{
+        r.mu.RLock()
+        defer r.mu.RUnlock()
+
+        // Convert map to slice for sorting and pagination
+        var allUsers []*domain.User
+        for _, user := range r.users </span><span class="cov0" title="0">{
+                userCopy := *user
+                allUsers = append(allUsers, &amp;userCopy)
+        }</span>
+
+        // Sort by creation time (newest first)
+        <span class="cov0" title="0">for i := 0; i &lt; len(allUsers)-1; i++ </span><span class="cov0" title="0">{
+                for j := i + 1; j &lt; len(allUsers); j++ </span><span class="cov0" title="0">{
+                        if allUsers[i].CreatedAt.Before(allUsers[j].CreatedAt) </span><span class="cov0" title="0">{
+                                allUsers[i], allUsers[j] = allUsers[j], allUsers[i]
+                        }</span>
+                }
+        }
+
+        // Apply pagination
+        <span class="cov0" title="0">start := offset
+        if start &gt; len(allUsers) </span><span class="cov0" title="0">{
+                return []*domain.User{}, nil
+        }</span>
+
+        <span class="cov0" title="0">end := start + limit
+        if end &gt; len(allUsers) </span><span class="cov0" title="0">{
+                end = len(allUsers)
+        }</span>
+
+        <span class="cov0" title="0">return allUsers[start:end], nil</span>
+}
+
+// Count returns the total number of users in memory
+func (r *memoryUserRepository) Count(ctx context.Context) (int64, error) <span class="cov0" title="0">{
+        r.mu.RLock()
+        defer r.mu.RUnlock()
+
+        return int64(len(r.users)), nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">// Package repository provides data access layer implementations for the demo-go application,
+// including MongoDB and in-memory storage options for user data persistence.
+package repository
+
+import (
+        "context"
+        "time"
+
+        "demo-go/internal/config"
+        "demo-go/internal/domain"
+        "demo-go/internal/logger"
+
+        "go.mongodb.org/mongo-driver/bson"
+        "go.mongodb.org/mongo-driver/bson/primitive"
+        "go.mongodb.org/mongo-driver/mongo"
+        "go.mongodb.org/mongo-driver/mongo/options"
+)
+
+// mongoUserRepository implements domain.UserRepository using MongoDB
+type mongoUserRepository struct {
+        collection *mongo.Collection
+        timeout    time.Duration
+        logger     *logger.Logger
+}
+
+// NewMongoUserRepository creates a new MongoDB user repository
+func NewMongoUserRepository(client *mongo.Client, cfg *config.Config) domain.UserRepository <span class="cov0" title="0">{
+        log := logger.GetGlobal().ForComponent("mongo-repository")
+
+        collection := client.Database(cfg.Database.MongoDB.Database).Collection("users")
+
+        // Create unique index on email
+        ctx, cancel := context.WithTimeout(context.Background(), cfg.Database.MongoDB.Timeout)
+        defer cancel()
+
+        log.Debug("Creating unique index on email field")
+        indexModel := mongo.IndexModel{
+                Keys:    bson.D{{Key: "email", Value: 1}},
+                Options: options.Index().SetUnique(true),
+        }
+        _, err := collection.Indexes().CreateOne(ctx, indexModel)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to create email index", "error", err)
+        }</span> else<span class="cov0" title="0"> {
+                log.Debug("Email index created successfully")
+        }</span>
+
+        <span class="cov0" title="0">return &amp;mongoUserRepository{
+                collection: collection,
+                timeout:    cfg.Database.MongoDB.Timeout,
+                logger:     log,
+        }</span>
+}
+
+// Create creates a new user in MongoDB
+func (r *mongoUserRepository) Create(ctx context.Context, user *domain.User) error <span class="cov0" title="0">{
+        log := r.logger.ForRepository("user", "create").WithField("email", user.Email)
+
+        ctx, cancel := context.WithTimeout(ctx, r.timeout)
+        defer cancel()
+
+        log.Debug("Creating user in MongoDB")
+
+        // Set creation time
+        user.CreatedAt = time.Now()
+        user.UpdatedAt = time.Now()
+
+        // If ID is empty, MongoDB will generate one
+        if user.ID == "" </span><span class="cov0" title="0">{
+                user.ID = primitive.NewObjectID().Hex()
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Inserting user document", "user_id", user.ID)
+
+        _, err := r.collection.InsertOne(ctx, user)
+        if err != nil </span><span class="cov0" title="0">{
+                if mongo.IsDuplicateKeyError(err) </span><span class="cov0" title="0">{
+                        log.Warn("Duplicate email detected", "error", err)
+                        return domain.ErrUserAlreadyExists
+                }</span>
+                <span class="cov0" title="0">log.Error("Failed to insert user", "error", err)
+                return err</span>
+        }
+
+        <span class="cov0" title="0">log.Info("User created successfully", "user_id", user.ID)
+        return nil</span>
+}
+
+// GetByID retrieves a user by ID from MongoDB
+func (r *mongoUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(ctx, r.timeout)
+        defer cancel()
+
+        var user domain.User
+        err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&amp;user)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == mongo.ErrNoDocuments </span><span class="cov0" title="0">{
+                        return nil, domain.ErrUserNotFound
+                }</span>
+                <span class="cov0" title="0">return nil, err</span>
+        }
+
+        <span class="cov0" title="0">return &amp;user, nil</span>
+}
+
+// GetByEmail retrieves a user by email from MongoDB
+func (r *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(ctx, r.timeout)
+        defer cancel()
+
+        var user domain.User
+        err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&amp;user)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == mongo.ErrNoDocuments </span><span class="cov0" title="0">{
+                        return nil, domain.ErrUserNotFound
+                }</span>
+                <span class="cov0" title="0">return nil, err</span>
+        }
+
+        <span class="cov0" title="0">return &amp;user, nil</span>
+}
+
+// Update updates a user in MongoDB
+func (r *mongoUserRepository) Update(ctx context.Context, id string, user *domain.User) error <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(ctx, r.timeout)
+        defer cancel()
+
+        // Set update time
+        user.UpdatedAt = time.Now()
+
+        update := bson.M{
+                "$set": bson.M{
+                        "name":       user.Name,
+                        "email":      user.Email,
+                        "role":       user.Role,
+                        "updated_at": user.UpdatedAt,
+                },
+        }
+
+        // Only update password if it's provided
+        if user.Password != "" </span><span class="cov0" title="0">{
+                if setMap, ok := update["$set"].(bson.M); ok </span><span class="cov0" title="0">{
+                        setMap["password"] = user.Password
+                }</span>
+        }
+
+        <span class="cov0" title="0">result, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
+        if err != nil </span><span class="cov0" title="0">{
+                if mongo.IsDuplicateKeyError(err) </span><span class="cov0" title="0">{
+                        return domain.ErrUserAlreadyExists
+                }</span>
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov0" title="0">if result.MatchedCount == 0 </span><span class="cov0" title="0">{
+                return domain.ErrUserNotFound
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Delete deletes a user from MongoDB
+func (r *mongoUserRepository) Delete(ctx context.Context, id string) error <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(ctx, r.timeout)
+        defer cancel()
+
+        result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if result.DeletedCount == 0 </span><span class="cov0" title="0">{
+                return domain.ErrUserNotFound
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// List retrieves users with pagination from MongoDB
+func (r *mongoUserRepository) List(ctx context.Context, limit, offset int) ([]*domain.User, error) <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(ctx, r.timeout)
+        defer cancel()
+
+        opts := options.Find().
+                SetLimit(int64(limit)).
+                SetSkip(int64(offset)).
+                SetSort(bson.D{{Key: "created_at", Value: -1}})
+
+        cursor, err := r.collection.Find(ctx, bson.M{}, opts)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                if err := cursor.Close(ctx); err != nil </span>{<span class="cov0" title="0">
+                        // Log the error but don't fail the operation
+                        // since the main operation was successful
+                }</span>
+        }()
+
+        <span class="cov0" title="0">var users []*domain.User
+        for cursor.Next(ctx) </span><span class="cov0" title="0">{
+                var user domain.User
+                if err := cursor.Decode(&amp;user); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">users = append(users, &amp;user)</span>
+        }
+
+        <span class="cov0" title="0">if err := cursor.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return users, nil</span>
+}
+
+// Count returns the total number of users in MongoDB
+func (r *mongoUserRepository) Count(ctx context.Context) (int64, error) <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(ctx, r.timeout)
+        defer cancel()
+
+        count, err := r.collection.CountDocuments(ctx, bson.M{})
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, err
+        }</span>
+
+        <span class="cov0" title="0">return count, nil</span>
+}
+
+// NewMongoClient creates a new MongoDB client
+func NewMongoClient(cfg *config.Config) (*mongo.Client, error) <span class="cov0" title="0">{
+        ctx, cancel := context.WithTimeout(context.Background(), cfg.Database.MongoDB.Timeout)
+        defer cancel()
+
+        clientOptions := options.Client().
+                ApplyURI(cfg.Database.MongoDB.URI)
+
+        // Safely convert int to uint64 for MaxPoolSize
+        if cfg.Database.MongoDB.MaxPoolSize &gt; 0 </span><span class="cov0" title="0">{
+                // Ensure the value is within valid bounds for uint64
+                maxPoolSize := cfg.Database.MongoDB.MaxPoolSize
+                if maxPoolSize &lt; 0 </span><span class="cov0" title="0">{
+                        maxPoolSize = 100 // Default fallback
+                }</span>
+                // Use explicit bounds checking to satisfy gosec G115
+                <span class="cov0" title="0">if maxPoolSize &gt; 0 &amp;&amp; maxPoolSize &lt;= 10000 </span><span class="cov0" title="0">{ // Reasonable pool size limit
+                        // Safe conversion since we've validated the bounds
+                        poolSize := uint64(maxPoolSize) // #nosec G115
+                        clientOptions = clientOptions.SetMaxPoolSize(poolSize)
+                }</span>
+        }
+
+        <span class="cov0" title="0">client, err := mongo.Connect(ctx, clientOptions)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Test the connection
+        <span class="cov0" title="0">if err := client.Ping(ctx, nil); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return client, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package routes
+
+import (
+        "demo-go/internal/handler"
+        "demo-go/internal/middleware"
+
+        "github.com/gorilla/mux"
+)
+
+// AdminRoutes handles admin-only routes
+type AdminRoutes struct {
+        userHandler   *handler.UserHandler
+        jwtMiddleware *middleware.JWTMiddleware
+}
+
+// NewAdminRoutes creates a new admin routes instance
+func NewAdminRoutes(userHandler *handler.UserHandler, jwtMiddleware *middleware.JWTMiddleware) *AdminRoutes <span class="cov0" title="0">{
+        return &amp;AdminRoutes{
+                userHandler:   userHandler,
+                jwtMiddleware: jwtMiddleware,
+        }
+}</span>
+
+// SetupRoutes configures admin routes (admin only)
+func (ar *AdminRoutes) SetupRoutes(router *mux.Router) <span class="cov0" title="0">{
+        apiRouter := router.PathPrefix("/api/v1").Subrouter()
+        adminRouter := apiRouter.PathPrefix("/admin").Subrouter()
+        adminRouter.Use(ar.jwtMiddleware.RequireAdmin)
+
+        adminRouter.HandleFunc("/users", ar.userHandler.GetUsers).Methods("GET")
+        adminRouter.HandleFunc("/users/{id}", ar.userHandler.GetUserByID).Methods("GET")
+        adminRouter.HandleFunc("/users/{id}", ar.userHandler.DeleteUser).Methods("DELETE")
+}</span>
+
+// GetRoutes returns a list of admin routes
+func (ar *AdminRoutes) GetRoutes() []string <span class="cov0" title="0">{
+        return []string{
+                "GET /api/v1/admin/users - List all users",
+                "GET /api/v1/admin/users/{id} - Get user by ID",
+                "DELETE /api/v1/admin/users/{id} - Delete user",
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package routes
+
+import (
+        "demo-go/internal/handler"
+
+        "github.com/gorilla/mux"
+)
+
+// AuthRoutes handles authentication routes
+type AuthRoutes struct {
+        userHandler *handler.UserHandler
+}
+
+// NewAuthRoutes creates a new auth routes instance
+func NewAuthRoutes(userHandler *handler.UserHandler) *AuthRoutes <span class="cov0" title="0">{
+        return &amp;AuthRoutes{
+                userHandler: userHandler,
+        }
+}</span>
+
+// SetupRoutes configures authentication routes (public)
+func (ar *AuthRoutes) SetupRoutes(router *mux.Router) <span class="cov0" title="0">{
+        authRouter := router.PathPrefix("/auth").Subrouter()
+        authRouter.HandleFunc("/register", ar.userHandler.Register).Methods("POST")
+        authRouter.HandleFunc("/login", ar.userHandler.Login).Methods("POST")
+        authRouter.HandleFunc("/refresh", ar.userHandler.RefreshToken).Methods("POST")
+}</span>
+
+// GetRoutes returns a list of auth routes
+func (ar *AuthRoutes) GetRoutes() []string <span class="cov0" title="0">{
+        return []string{
+                "POST /auth/register - User registration",
+                "POST /auth/login - User login",
+                "POST /auth/refresh - Refresh JWT token",
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package routes
+
+import (
+        "demo-go/internal/handler"
+
+        "github.com/gorilla/mux"
+)
+
+// HealthRoutes handles health check routes
+type HealthRoutes struct {
+        userHandler *handler.UserHandler
+}
+
+// NewHealthRoutes creates a new health routes instance
+func NewHealthRoutes(userHandler *handler.UserHandler) *HealthRoutes <span class="cov0" title="0">{
+        return &amp;HealthRoutes{
+                userHandler: userHandler,
+        }
+}</span>
+
+// SetupRoutes configures health check routes (public)
+func (hr *HealthRoutes) SetupRoutes(router *mux.Router) <span class="cov0" title="0">{
+        router.HandleFunc("/health", hr.userHandler.Health).Methods("GET")
+}</span>
+
+// GetRoutes returns a list of health routes
+func (hr *HealthRoutes) GetRoutes() []string <span class="cov0" title="0">{
+        return []string{
+                "GET /health - Health check",
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">package routes
+
+import "github.com/gorilla/mux"
+
+// RouteGroup defines the interface that all route groups must implement
+type RouteGroup interface {
+        SetupRoutes(router *mux.Router)
+        GetRoutes() []string
+}
+
+// RouteConfig holds configuration for route setup
+type RouteConfig struct {
+        Prefix      string
+        Middleware  []mux.MiddlewareFunc
+        Description string
+}
+
+// RouteInfo contains information about a single route
+type RouteInfo struct {
+        Method      string
+        Path        string
+        Handler     string
+        Description string
+        Protected   bool
+        AdminOnly   bool
+}
+
+// GetAllRouteInfo returns detailed information about all routes
+func (r *Router) GetAllRouteInfo() []RouteInfo <span class="cov0" title="0">{
+        var routes []RouteInfo
+
+        routes = append(routes, r.getHealthRoutes()...)
+        routes = append(routes, r.getAuthRoutes()...)
+        routes = append(routes, r.getUserRoutes()...)
+        routes = append(routes, r.getAdminRoutes()...)
+
+        return routes
+}</span>
+
+// getHealthRoutes returns health check route information
+func (r *Router) getHealthRoutes() []RouteInfo <span class="cov0" title="0">{
+        return []RouteInfo{
+                {
+                        Method:      "GET",
+                        Path:        "/health",
+                        Handler:     "userHandler.Health",
+                        Description: "Health check endpoint",
+                        Protected:   false,
+                        AdminOnly:   false,
+                },
+        }
+}</span>
+
+// getAuthRoutes returns authentication route information
+func (r *Router) getAuthRoutes() []RouteInfo <span class="cov0" title="0">{
+        return []RouteInfo{
+                {
+                        Method:      "POST",
+                        Path:        "/auth/register",
+                        Handler:     "userHandler.Register",
+                        Description: "User registration",
+                        Protected:   false,
+                        AdminOnly:   false,
+                },
+                {
+                        Method:      "POST",
+                        Path:        "/auth/login",
+                        Handler:     "userHandler.Login",
+                        Description: "User login",
+                        Protected:   false,
+                        AdminOnly:   false,
+                },
+                {
+                        Method:      "POST",
+                        Path:        "/auth/refresh",
+                        Handler:     "userHandler.RefreshToken",
+                        Description: "Refresh JWT token",
+                        Protected:   false,
+                        AdminOnly:   false,
+                },
+        }
+}</span>
+
+// getUserRoutes returns user API route information
+func (r *Router) getUserRoutes() []RouteInfo <span class="cov0" title="0">{
+        return []RouteInfo{
+                {
+                        Method:      "GET",
+                        Path:        "/api/v1/profile",
+                        Handler:     "userHandler.GetProfile",
+                        Description: "Get user profile",
+                        Protected:   true,
+                        AdminOnly:   false,
+                },
+                {
+                        Method:      "PUT",
+                        Path:        "/api/v1/profile",
+                        Handler:     "userHandler.UpdateProfile",
+                        Description: "Update user profile",
+                        Protected:   true,
+                        AdminOnly:   false,
+                },
+        }
+}</span>
+
+// getAdminRoutes returns admin API route information
+func (r *Router) getAdminRoutes() []RouteInfo <span class="cov0" title="0">{
+        return []RouteInfo{
+                {
+                        Method:      "GET",
+                        Path:        "/api/v1/admin/users",
+                        Handler:     "userHandler.GetUsers",
+                        Description: "List all users",
+                        Protected:   true,
+                        AdminOnly:   true,
+                },
+                {
+                        Method:      "GET",
+                        Path:        "/api/v1/admin/users/{id}",
+                        Handler:     "userHandler.GetUserByID",
+                        Description: "Get user by ID",
+                        Protected:   true,
+                        AdminOnly:   true,
+                },
+                {
+                        Method:      "DELETE",
+                        Path:        "/api/v1/admin/users/{id}",
+                        Handler:     "userHandler.DeleteUser",
+                        Description: "Delete user",
+                        Protected:   true,
+                        AdminOnly:   true,
+                },
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file16" style="display: none">// Package routes provides HTTP route configuration and middleware setup
+// for the demo-go application. It includes route groups for authentication,
+// user management, admin functionality, and health checks.
+package routes
+
+import (
+        "demo-go/internal/handler"
+        "demo-go/internal/logger"
+        "demo-go/internal/middleware"
+
+        "github.com/gorilla/mux"
+)
+
+// Router holds the dependencies needed for route setup
+type Router struct {
+        userHandler   *handler.UserHandler
+        jwtMiddleware *middleware.JWTMiddleware
+        logger        *logger.Logger
+
+        // Route groups
+        healthRoutes *HealthRoutes
+        authRoutes   *AuthRoutes
+        userRoutes   *UserRoutes
+        adminRoutes  *AdminRoutes
+}
+
+// NewRouter creates a new router instance with dependencies
+func NewRouter(
+        userHandler *handler.UserHandler,
+        jwtMiddleware *middleware.JWTMiddleware,
+        logger *logger.Logger,
+) *Router <span class="cov0" title="0">{
+        return &amp;Router{
+                userHandler:   userHandler,
+                jwtMiddleware: jwtMiddleware,
+                logger:        logger,
+
+                // Initialize route groups
+                healthRoutes: NewHealthRoutes(userHandler),
+                authRoutes:   NewAuthRoutes(userHandler),
+                userRoutes:   NewUserRoutes(userHandler),
+                adminRoutes:  NewAdminRoutes(userHandler, jwtMiddleware),
+        }
+}</span>
+
+// SetupRoutes configures all HTTP routes and returns the configured router
+func (r *Router) SetupRoutes() *mux.Router <span class="cov0" title="0">{
+        router := mux.NewRouter()
+
+        // Add global middleware
+        router.Use(middleware.LoggingMiddleware(r.logger))
+        router.Use(middleware.CORSMiddleware)
+        router.Use(r.jwtMiddleware.Authenticate)
+
+        // Setup all route groups
+        r.healthRoutes.SetupRoutes(router)
+        r.authRoutes.SetupRoutes(router)
+        r.userRoutes.SetupRoutes(router)
+        r.adminRoutes.SetupRoutes(router)
+
+        return router
+}</span>
+
+// GetRoutesSummary returns a summary of all available routes
+func (r *Router) GetRoutesSummary() map[string][]string <span class="cov0" title="0">{
+        return map[string][]string{
+                "Health Routes":         r.healthRoutes.GetRoutes(),
+                "Authentication Routes": r.authRoutes.GetRoutes(),
+                "User API Routes":       r.userRoutes.GetRoutes(),
+                "Admin Routes":          r.adminRoutes.GetRoutes(),
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file17" style="display: none">package routes
+
+import (
+        "demo-go/internal/handler"
+
+        "github.com/gorilla/mux"
+)
+
+// UserRoutes handles user-related API routes
+type UserRoutes struct {
+        userHandler *handler.UserHandler
+}
+
+// NewUserRoutes creates a new user routes instance
+func NewUserRoutes(userHandler *handler.UserHandler) *UserRoutes <span class="cov0" title="0">{
+        return &amp;UserRoutes{
+                userHandler: userHandler,
+        }
+}</span>
+
+// SetupRoutes configures user API routes (authenticated)
+func (ur *UserRoutes) SetupRoutes(router *mux.Router) <span class="cov0" title="0">{
+        apiRouter := router.PathPrefix("/api/v1").Subrouter()
+
+        // User profile routes
+        apiRouter.HandleFunc("/profile", ur.userHandler.GetProfile).Methods("GET")
+        apiRouter.HandleFunc("/profile", ur.userHandler.UpdateProfile).Methods("PUT")
+}</span>
+
+// GetRoutes returns a list of user routes
+func (ur *UserRoutes) GetRoutes() []string <span class="cov0" title="0">{
+        return []string{
+                "GET /api/v1/profile - Get user profile",
+                "PUT /api/v1/profile - Update user profile",
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file18" style="display: none">package service
+
+import (
+        "context"
+        "time"
+
+        "demo-go/internal/cache"
+        "demo-go/internal/domain"
+        "demo-go/internal/logger"
+)
+
+// cachedUserService wraps a UserService with caching capabilities
+type cachedUserService struct {
+        userService domain.UserService
+        cache       cache.Service
+        logger      *logger.Logger
+        cacheTTL    time.Duration
+}
+
+// NewCachedUserService creates a new cached user service wrapper
+func NewCachedUserService(
+        userService domain.UserService,
+        cacheService cache.Service,
+        cacheTTL time.Duration,
+) domain.UserService <span class="cov0" title="0">{
+        return &amp;cachedUserService{
+                userService: userService,
+                cache:       cacheService,
+                logger:      logger.GetGlobal().ForComponent("cached-user-service"),
+                cacheTTL:    cacheTTL,
+        }
+}</span>
+
+// Register creates a new user account (no caching needed for write operations)
+func (s *cachedUserService) Register(ctx context.Context, req *domain.CreateUserRequest) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := s.logger.ForService("user", "register").WithField("email", req.Email)
+
+        log.Debug("Registering new user (bypassing cache)")
+
+        user, err := s.userService.Register(ctx, req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Cache the newly created user
+        <span class="cov0" title="0">if cacheErr := s.cache.SetUser(ctx, user.ID, user, s.cacheTTL); cacheErr != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to cache newly registered user", "user_id", user.ID, "error", cacheErr)
+                // Don't fail the operation if caching fails
+        }</span> else<span class="cov0" title="0"> {
+                log.Debug("Cached newly registered user", "user_id", user.ID)
+        }</span>
+
+        <span class="cov0" title="0">return user, nil</span>
+}
+
+// Login authenticates a user and returns a JWT token (no caching needed for authentication)
+func (s *cachedUserService) Login(ctx context.Context, req *domain.LoginRequest) (string, *domain.UserResponse, error) <span class="cov0" title="0">{
+        log := s.logger.ForService("user", "login").WithField("email", req.Email)
+
+        log.Debug("User login (bypassing cache for authentication)")
+
+        token, user, err := s.userService.Login(ctx, req)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", nil, err
+        }</span>
+
+        // Cache the user data after successful login
+        <span class="cov0" title="0">if cacheErr := s.cache.SetUser(ctx, user.ID, user, s.cacheTTL); cacheErr != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to cache user after login", "user_id", user.ID, "error", cacheErr)
+                // Don't fail the operation if caching fails
+        }</span> else<span class="cov0" title="0"> {
+                log.Debug("Cached user after login", "user_id", user.ID)
+        }</span>
+
+        <span class="cov0" title="0">return token, user, nil</span>
+}
+
+// GetProfile retrieves a user profile (cache-enabled)
+// getUserWithCache is a helper function to get user data with caching logic
+func (s *cachedUserService) getUserWithCache(ctx context.Context, userID, operation string,
+        serviceCall func(context.Context, string) (*domain.UserResponse, error)) (*domain.UserResponse, error) <span class="cov0" title="0">{
+
+        log := s.logger.ForService("user", operation).WithField("user_id", userID)
+        log.Debug("Getting user with cache")
+
+        // Try to get from cache first
+        user, err := s.cache.GetUser(ctx, userID)
+        if err == nil </span><span class="cov0" title="0">{
+                log.Debug("User cache hit")
+                return user, nil
+        }</span>
+
+        // Cache miss or error - check if it's a real miss vs error
+        <span class="cov0" title="0">if err != domain.ErrUserNotFound </span><span class="cov0" title="0">{
+                log.Warn("Cache error when getting user", "error", err)
+        }</span> else<span class="cov0" title="0"> {
+                log.Debug("User cache miss")
+        }</span>
+
+        // Get from underlying service
+        <span class="cov0" title="0">user, err = serviceCall(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Cache the result
+        <span class="cov0" title="0">if cacheErr := s.cache.SetUser(ctx, userID, user, s.cacheTTL); cacheErr != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to cache user", "user_id", userID, "error", cacheErr)
+                // Don't fail the operation if caching fails
+        }</span> else<span class="cov0" title="0"> {
+                log.Debug("Cached user", "user_id", userID)
+        }</span>
+
+        <span class="cov0" title="0">return user, nil</span>
+}
+
+func (s *cachedUserService) GetProfile(ctx context.Context, userID string) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        return s.getUserWithCache(ctx, userID, "get-profile", s.userService.GetProfile)
+}</span>
+
+// UpdateProfile updates a user profile and invalidates cache
+func (s *cachedUserService) UpdateProfile(
+        ctx context.Context,
+        userID string,
+        req *domain.UpdateUserRequest,
+) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := s.logger.ForService("user", "update-profile").WithField("user_id", userID)
+
+        log.Debug("Updating user profile")
+
+        // Update in underlying service
+        user, err := s.userService.UpdateProfile(ctx, userID, req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Invalidate cache for this user
+        <span class="cov0" title="0">if cacheErr := s.cache.DeleteUser(ctx, userID); cacheErr != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to invalidate user cache after update", "user_id", userID, "error", cacheErr)
+        }</span> else<span class="cov0" title="0"> {
+                log.Debug("Invalidated user cache after update", "user_id", userID)
+        }</span>
+
+        // Cache the updated user
+        <span class="cov0" title="0">if cacheErr := s.cache.SetUser(ctx, userID, user, s.cacheTTL); cacheErr != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to cache updated user", "user_id", userID, "error", cacheErr)
+        }</span> else<span class="cov0" title="0"> {
+                log.Debug("Cached updated user", "user_id", userID)
+        }</span>
+
+        <span class="cov0" title="0">return user, nil</span>
+}
+
+// GetUsers retrieves a list of users (cache-enabled with list caching strategy)
+func (s *cachedUserService) GetUsers(ctx context.Context, limit, offset int) ([]*domain.UserResponse, int64, error) <span class="cov0" title="0">{
+        log := s.logger.ForService("user", "get-users").WithFields(map[string]interface{}{
+                "limit":  limit,
+                "offset": offset,
+        })
+
+        log.Debug("Getting users list")
+
+        // For list operations, we could implement more complex caching strategies
+        // For now, we'll bypass cache for list operations and delegate to underlying service
+        // This avoids complex cache invalidation scenarios for list data
+
+        users, total, err := s.userService.GetUsers(ctx, limit, offset)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, err
+        }</span>
+
+        // Opportunistically cache individual users from the list
+        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+                // Use background context to avoid cancellation
+                bgCtx := context.Background()
+                for _, user := range users </span><span class="cov0" title="0">{
+                        if cacheErr := s.cache.SetUser(bgCtx, user.ID, user, s.cacheTTL); cacheErr != nil </span><span class="cov0" title="0">{
+                                log.Debug("Failed to cache user from list", "user_id", user.ID, "error", cacheErr)
+                        }</span>
+                }
+                <span class="cov0" title="0">log.Debug("Opportunistically cached users from list", "count", len(users))</span>
+        }()
+
+        <span class="cov0" title="0">return users, total, nil</span>
+}
+
+// GetUserByID retrieves a user by ID (cache-enabled)
+func (s *cachedUserService) GetUserByID(ctx context.Context, id string) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        return s.getUserWithCache(ctx, id, "get-by-id", s.userService.GetUserByID)
+}</span>
+
+// DeleteUser deletes a user and invalidates cache
+func (s *cachedUserService) DeleteUser(ctx context.Context, id string) error <span class="cov0" title="0">{
+        log := s.logger.ForService("user", "delete").WithField("user_id", id)
+
+        log.Debug("Deleting user")
+
+        // Delete from underlying service
+        err := s.userService.DeleteUser(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Invalidate cache for this user
+        <span class="cov0" title="0">if cacheErr := s.cache.DeleteUser(ctx, id); cacheErr != nil </span><span class="cov0" title="0">{
+                log.Warn("Failed to invalidate user cache after deletion", "user_id", id, "error", cacheErr)
+                // Don't fail the operation if cache invalidation fails
+        }</span> else<span class="cov0" title="0"> {
+                log.Debug("Invalidated user cache after deletion", "user_id", id)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// RefreshToken generates a new token for the user (cache-enabled for user lookup)
+func (s *cachedUserService) RefreshToken(ctx context.Context, userID string) (string, error) <span class="cov0" title="0">{
+        log := s.logger.ForService("user", "refresh-token").WithField("user_id", userID)
+
+        log.Debug("Refreshing user token")
+
+        // For token refresh, we need fresh user data from the database
+        // to ensure the user is still active and valid
+        // So we bypass cache for this operation
+        token, err := s.userService.RefreshToken(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Token refreshed successfully")
+        return token, nil</span>
+}
+
+// CacheHealthCheck checks the health of the cache service
+func (s *cachedUserService) CacheHealthCheck(ctx context.Context) error <span class="cov0" title="0">{
+        return s.cache.Ping(ctx)
+}</span>
+
+// GetCacheStats returns cache statistics if the underlying cache supports it
+func (s *cachedUserService) GetCacheStats(ctx context.Context) (map[string]interface{}, error) <span class="cov0" title="0">{
+        log := s.logger.WithField("operation", "get-cache-stats")
+
+        // For now, return basic cache health info
+        // More detailed stats implementation would require extending the cache interface
+        if err := s.cache.Ping(ctx); err != nil </span><span class="cov0" title="0">{
+                log.Error("Cache health check failed", "error", err)
+                return map[string]interface{}{
+                        "healthy": false,
+                        "error":   err.Error(),
+                }, err
+        }</span>
+
+        <span class="cov0" title="0">return map[string]interface{}{
+                "healthy": true,
+                "message": "Cache is operational",
+        }, nil</span>
+}
+
+// InvalidateAllUserCache invalidates all user-related cache entries
+func (s *cachedUserService) InvalidateAllUserCache(ctx context.Context) error <span class="cov0" title="0">{
+        log := s.logger.WithField("operation", "invalidate-all-cache")
+
+        log.Info("Invalidating all user cache")
+
+        // Delete all user cache entries
+        err := s.cache.DeleteByPattern(ctx, "user:*")
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to invalidate all user cache", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Info("All user cache invalidated successfully")
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file19" style="display: none">package service
+
+import (
+        "time"
+
+        "demo-go/internal/config"
+        "demo-go/internal/domain"
+
+        "github.com/golang-jwt/jwt/v5"
+)
+
+// jwtTokenService implements domain.TokenService using JWT
+type jwtTokenService struct {
+        secretKey      []byte
+        expirationTime time.Duration
+        issuer         string
+}
+
+// NewJWTTokenService creates a new JWT token service
+func NewJWTTokenService(cfg *config.Config) domain.TokenService <span class="cov0" title="0">{
+        return &amp;jwtTokenService{
+                secretKey:      []byte(cfg.JWT.SecretKey),
+                expirationTime: cfg.JWT.Expiration,
+                issuer:         "demo-go-api",
+        }
+}</span>
+
+// GenerateToken generates a JWT token for the given user
+func (s *jwtTokenService) GenerateToken(user *domain.User) (string, error) <span class="cov0" title="0">{
+        now := time.Now()
+        expirationTime := now.Add(s.expirationTime)
+
+        claims := &amp;jwt.MapClaims{
+                "user_id": user.ID,
+                "email":   user.Email,
+                "role":    user.Role,
+                "exp":     expirationTime.Unix(),
+                "iat":     now.Unix(),
+                "iss":     s.issuer,
+        }
+
+        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+        tokenString, err := token.SignedString(s.secretKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">return tokenString, nil</span>
+}
+
+// ValidateToken validates a JWT token and returns the claims
+func (s *jwtTokenService) ValidateToken(tokenString string) (*domain.TokenClaims, error) <span class="cov0" title="0">{
+        token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) </span><span class="cov0" title="0">{
+                // Make sure token's signing method is what we expect
+                if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                        return nil, domain.ErrInvalidToken
+                }</span>
+                <span class="cov0" title="0">return s.secretKey, nil</span>
+        })
+
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return nil, domain.ErrInvalidToken
+        }</span>
+
+        <span class="cov0" title="0">if !token.Valid </span><span class="cov0" title="0">{
+                return nil, domain.ErrInvalidToken
+        }</span>
+
+        <span class="cov0" title="0">claims, ok := token.Claims.(jwt.MapClaims)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, domain.ErrInvalidToken
+        }</span>
+
+        // Extract claims
+        <span class="cov0" title="0">userID, ok := claims["user_id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, domain.ErrInvalidToken
+        }</span>
+
+        <span class="cov0" title="0">email, ok := claims["email"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, domain.ErrInvalidToken
+        }</span>
+
+        <span class="cov0" title="0">role, ok := claims["role"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, domain.ErrInvalidToken
+        }</span>
+
+        <span class="cov0" title="0">exp, ok := claims["exp"].(float64)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, domain.ErrInvalidToken
+        }</span>
+
+        <span class="cov0" title="0">iat, ok := claims["iat"].(float64)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, domain.ErrInvalidToken
+        }</span>
+
+        <span class="cov0" title="0">return &amp;domain.TokenClaims{
+                UserID: userID,
+                Email:  email,
+                Role:   role,
+                Exp:    int64(exp),
+                Iat:    int64(iat),
+        }, nil</span>
+}
+
+// ExtractUserIDFromToken extracts user ID from a JWT token
+func (s *jwtTokenService) ExtractUserIDFromToken(tokenString string) (string, error) <span class="cov0" title="0">{
+        claims, err := s.ValidateToken(tokenString)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">return claims.UserID, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file20" style="display: none">// Package service provides business logic implementations for the demo-go application.
+// It includes user management services, JWT token services, and caching functionality.
+package service
+
+import (
+        "context"
+        "fmt"
+        "strings"
+
+        "demo-go/internal/domain"
+        "demo-go/internal/logger"
+
+        "golang.org/x/crypto/bcrypt"
+)
+
+// Service limits and constants
+const (
+        DefaultPageLimit = 10
+        MaxPageLimit     = 100
+        MinNameLength    = 2
+        MaxNameLength    = 100
+        MinPasswordLen   = 6
+        BCryptCost       = 10
+)
+
+// userService implements domain.UserService
+type userService struct {
+        userRepo     domain.UserRepository
+        tokenService domain.TokenService
+        logger       *logger.Logger
+}
+
+// NewUserService creates a new user service
+func NewUserService(userRepo domain.UserRepository, tokenService domain.TokenService) domain.UserService <span class="cov0" title="0">{
+        return &amp;userService{
+                userRepo:     userRepo,
+                tokenService: tokenService,
+                logger:       logger.GetGlobal().ForComponent("user-service"),
+        }
+}</span>
+
+// Register creates a new user account
+func (s *userService) Register(ctx context.Context, req *domain.CreateUserRequest) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        log := s.logger.ForService("user", "register").WithField("email", req.Email)
+
+        log.Debug("Starting user registration")
+
+        // Validate request
+        if err := s.validateCreateUserRequest(req); err != nil </span><span class="cov0" title="0">{
+                log.Warn("User registration validation failed", "error", err)
+                return nil, err
+        }</span>
+
+        // Check if user already exists
+        <span class="cov0" title="0">log.Debug("Checking if user already exists")
+        existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
+        if err != nil &amp;&amp; err != domain.ErrUserNotFound </span><span class="cov0" title="0">{
+                log.Error("Error checking existing user", "error", err)
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">if existingUser != nil </span><span class="cov0" title="0">{
+                log.Warn("User already exists")
+                return nil, domain.ErrUserAlreadyExists
+        }</span>
+
+        // Hash password
+        <span class="cov0" title="0">log.Debug("Hashing password")
+        hashedPassword, err := s.hashPassword(req.Password)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to hash password", "error", err)
+                return nil, fmt.Errorf("failed to hash password: %w", err)
+        }</span>
+
+        // Set default role if not provided
+        <span class="cov0" title="0">role := req.Role
+        if role == "" </span><span class="cov0" title="0">{
+                role = "user"
+        }</span>
+
+        <span class="cov0" title="0">log.Debug("Creating user entity", "role", role)
+
+        // Create user entity
+        user := &amp;domain.User{
+                Name:     strings.TrimSpace(req.Name),
+                Email:    strings.ToLower(strings.TrimSpace(req.Email)),
+                Password: hashedPassword,
+                Role:     role,
+        }
+
+        // Save user
+        log.Debug("Saving user to repository")
+        if err := s.userRepo.Create(ctx, user); err != nil </span><span class="cov0" title="0">{
+                log.Error("Failed to create user in repository", "error", err)
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">log.Info("User registered successfully", "user_id", user.ID)
+        return user.ToResponse(), nil</span>
+}
+
+// Login authenticates a user and returns a JWT token
+func (s *userService) Login(ctx context.Context, req *domain.LoginRequest) (string, *domain.UserResponse, error) <span class="cov0" title="0">{
+        log := s.logger.ForService("user", "login").WithField("email", req.Email)
+
+        log.Debug("Starting user login")
+
+        // Validate request
+        if err := s.validateLoginRequest(req); err != nil </span><span class="cov0" title="0">{
+                log.Warn("Login validation failed", "error", err)
+                return "", nil, err
+        }</span>
+
+        // Get user by email
+        <span class="cov0" title="0">log.Debug("Looking up user by email")
+        user, err := s.userRepo.GetByEmail(ctx, strings.ToLower(strings.TrimSpace(req.Email)))
+        if err != nil </span><span class="cov0" title="0">{
+                if err == domain.ErrUserNotFound </span><span class="cov0" title="0">{
+                        log.Warn("Login attempt with non-existent email")
+                        return "", nil, domain.ErrInvalidCredentials
+                }</span>
+                <span class="cov0" title="0">log.Error("Error retrieving user", "error", err)
+                return "", nil, err</span>
+        }
+
+        // Verify password
+        <span class="cov0" title="0">if err := s.verifyPassword(user.Password, req.Password); err != nil </span><span class="cov0" title="0">{
+                return "", nil, domain.ErrInvalidCredentials
+        }</span>
+
+        // Generate token
+        <span class="cov0" title="0">token, err := s.tokenService.GenerateToken(user)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", nil, fmt.Errorf("failed to generate token: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return token, user.ToResponse(), nil</span>
+}
+
+// GetProfile retrieves user profile by user ID
+func (s *userService) GetProfile(ctx context.Context, userID string) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        user, err := s.userRepo.GetByID(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return user.ToResponse(), nil</span>
+}
+
+// UpdateProfile updates user profile
+func (s *userService) UpdateProfile(
+        ctx context.Context,
+        userID string,
+        req *domain.UpdateUserRequest,
+) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        // Get existing user
+        existingUser, err := s.userRepo.GetByID(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Validate update request
+        <span class="cov0" title="0">if err := s.validateUpdateUserRequest(req); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Prepare updated user
+        <span class="cov0" title="0">updatedUser := *existingUser
+
+        // Update fields if provided
+        if req.Name != nil </span><span class="cov0" title="0">{
+                updatedUser.Name = strings.TrimSpace(*req.Name)
+        }</span>
+
+        <span class="cov0" title="0">if req.Email != nil </span><span class="cov0" title="0">{
+                newEmail := strings.ToLower(strings.TrimSpace(*req.Email))
+                if newEmail != existingUser.Email </span><span class="cov0" title="0">{
+                        // Check if new email already exists
+                        _, err := s.userRepo.GetByEmail(ctx, newEmail)
+                        if err != nil &amp;&amp; err != domain.ErrUserNotFound </span><span class="cov0" title="0">{
+                                return nil, err
+                        }</span>
+                        <span class="cov0" title="0">if err == nil </span><span class="cov0" title="0">{
+                                return nil, domain.ErrUserAlreadyExists
+                        }</span>
+                }
+                <span class="cov0" title="0">updatedUser.Email = newEmail</span>
+        }
+
+        <span class="cov0" title="0">if req.Role != nil </span><span class="cov0" title="0">{
+                updatedUser.Role = *req.Role
+        }</span>
+
+        // Update user
+        <span class="cov0" title="0">if err := s.userRepo.Update(ctx, userID, &amp;updatedUser); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return updatedUser.ToResponse(), nil</span>
+}
+
+// GetUsers retrieves all users with pagination
+func (s *userService) GetUsers(ctx context.Context, limit, offset int) ([]*domain.UserResponse, int64, error) <span class="cov0" title="0">{
+        // Set default and max limits
+        if limit &lt;= 0 </span><span class="cov0" title="0">{
+                limit = DefaultPageLimit
+        }</span>
+        <span class="cov0" title="0">if limit &gt; MaxPageLimit </span><span class="cov0" title="0">{
+                limit = MaxPageLimit
+        }</span>
+        <span class="cov0" title="0">if offset &lt; 0 </span><span class="cov0" title="0">{
+                offset = 0
+        }</span>
+
+        <span class="cov0" title="0">users, err := s.userRepo.List(ctx, limit, offset)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, err
+        }</span>
+
+        <span class="cov0" title="0">count, err := s.userRepo.Count(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, err
+        }</span>
+
+        // Convert to response format
+        <span class="cov0" title="0">var userResponses []*domain.UserResponse
+        for _, user := range users </span><span class="cov0" title="0">{
+                userResponses = append(userResponses, user.ToResponse())
+        }</span>
+
+        <span class="cov0" title="0">return userResponses, count, nil</span>
+}
+
+// GetUserByID retrieves a user by ID
+func (s *userService) GetUserByID(ctx context.Context, id string) (*domain.UserResponse, error) <span class="cov0" title="0">{
+        user, err := s.userRepo.GetByID(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return user.ToResponse(), nil</span>
+}
+
+// DeleteUser deletes a user by ID
+func (s *userService) DeleteUser(ctx context.Context, id string) error <span class="cov0" title="0">{
+        return s.userRepo.Delete(ctx, id)
+}</span>
+
+// RefreshToken generates a new token for the user
+func (s *userService) RefreshToken(ctx context.Context, userID string) (string, error) <span class="cov0" title="0">{
+        user, err := s.userRepo.GetByID(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">token, err := s.tokenService.GenerateToken(user)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to generate token: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return token, nil</span>
+}
+
+// Helper methods
+
+func (s *userService) validateCreateUserRequest(req *domain.CreateUserRequest) error <span class="cov0" title="0">{
+        if strings.TrimSpace(req.Name) == "" </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Name is required"}
+        }</span>
+
+        <span class="cov0" title="0">if len(strings.TrimSpace(req.Name)) &lt; MinNameLength </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Name must be at least 2 characters long"}
+        }</span>
+
+        <span class="cov0" title="0">if strings.TrimSpace(req.Email) == "" </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Email is required"}
+        }</span>
+
+        <span class="cov0" title="0">if !s.isValidEmail(req.Email) </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
+        }</span>
+
+        <span class="cov0" title="0">if len(req.Password) &lt; MinPasswordLen </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Password must be at least 6 characters long"}
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (s *userService) validateLoginRequest(req *domain.LoginRequest) error <span class="cov0" title="0">{
+        if strings.TrimSpace(req.Email) == "" </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Email is required"}
+        }</span>
+
+        <span class="cov0" title="0">if req.Password == "" </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Password is required"}
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (s *userService) validateUpdateUserRequest(req *domain.UpdateUserRequest) error <span class="cov0" title="0">{
+        if req.Name != nil &amp;&amp; len(strings.TrimSpace(*req.Name)) &lt; MinNameLength </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Name must be at least 2 characters long"}
+        }</span>
+
+        <span class="cov0" title="0">if req.Email != nil &amp;&amp; !s.isValidEmail(*req.Email) </span><span class="cov0" title="0">{
+                return &amp;domain.Error{Code: "VALIDATION_FAILED", Message: "Invalid email format"}
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (s *userService) isValidEmail(email string) bool <span class="cov0" title="0">{
+        email = strings.TrimSpace(email)
+        return strings.Contains(email, "@") &amp;&amp; strings.Contains(email, ".")
+}</span>
+
+func (s *userService) hashPassword(password string) (string, error) <span class="cov0" title="0">{
+        bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+        return string(bytes), err
+}</span>
+
+func (s *userService) verifyPassword(hashedPassword, password string) error <span class="cov0" title="0">{
+        return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -30,8 +30,12 @@ A production-ready Go web server implementing clean architecture principles with
 
 - [Quick Start](#-quick-start)
 - [Prerequisites](#-prerequisites)
-- [Installation](#-installation)
-- [Configuration](#-configuration)
+- [Installation & Configuration](#️-installation--configuration)
+  - [Environment Variables Configuration](#environment-variables-configuration)
+  - [Environment Setup Commands](#environment-setup-commands)
+  - [Configuration Categories](#configuration-categories)
+  - [Docker Compose Profiles](#docker-compose-profiles)
+  - [Security Best Practices](#security-best-practices)
 - [API Documentation](#-api-documentation)
 - [Routes Architecture](#️-routes-architecture)
 - [Testing](#-testing)
@@ -102,91 +106,240 @@ brew install k6  # macOS
 ```
 ## 🔧 Installation & Configuration
 
-### Environment Variables
+### Environment Variables Configuration
 
-Create a `.env` file in the project root:
+This section explains how to configure the demo-go application using environment variables.
+
+#### Quick Start
+
+1. **Copy the example environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit the `.env` file with your specific values:**
+   ```bash
+   nano .env  # or use your preferred editor
+   ```
+
+3. **Run with docker-compose:**
+   ```bash
+   # Basic setup
+   docker-compose up -d
+
+   # With development tools (MongoDB Express)
+   docker-compose --profile development up -d
+
+   # With Redis cache
+   docker-compose --profile cache up -d
+
+   # For testing
+   docker-compose --profile testing up -d
+   ```
+
+#### Environment Setup Commands
 
 ```bash
-# Server Configuration
-PORT=8080
-GIN_MODE=release  # or debug for development
-GRACEFUL_TIMEOUT=10s
+# Setup environment (creates .env from .env.local)
+make setup-env
 
-# Database Configuration
-DATABASE_URL=mongodb://localhost:27017
-DATABASE_NAME=demo_go
+# Copy development environment
+make env-dev
 
-# Cache Configuration
-CACHE_TYPE=redis  # redis or memory
-REDIS_URL=redis://localhost:6379
-CACHE_TTL=300     # Cache TTL in seconds
+# Copy example environment
+make env-example
 
-# Authentication
-JWT_SECRET=your-super-secure-jwt-secret-key-here
-JWT_EXPIRY=24h    # Token expiry duration
-
-# External APIs
-EXTERNAL_API_URL=https://api.example.com
-API_TIMEOUT=30s
-
-# Monitoring & Observability
-LOG_LEVEL=info    # debug, info, warn, error
-METRICS_ENABLED=true
-TRACING_ENABLED=true
-
-# Rate Limiting
-RATE_LIMIT=100    # Requests per minute
-BURST_LIMIT=20    # Burst requests
-
-# Security
-CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
-TRUSTED_PROXIES=127.0.0.1,10.0.0.0/8
+# Validate configuration
+make env-validate
 ```
 
-### Configuration Profiles
+#### Environment Files
 
-#### Development
+| File | Purpose | Commit to Git |
+|------|---------|---------------|
+| `.env.example` | Template with safe defaults | ✅ Yes |
+| `.env.local` | Local development defaults | ✅ Yes |
+| `.env` | Your actual configuration | ❌ No |
+
+#### Configuration Categories
+
+##### 🚀 Application Configuration
 ```bash
-export GIN_MODE=debug
-export LOG_LEVEL=debug
-export CACHE_TYPE=memory
-export DATABASE_URL=mongodb://localhost:27017
+APP_NAME=demo-clean-api
+APP_VERSION=1.0.0
+APP_ENVIRONMENT=development  # development, staging, production
+APP_DEBUG=true
 ```
 
-#### Production
+##### 🌐 Server Configuration
 ```bash
-export GIN_MODE=release
-export LOG_LEVEL=info
-export CACHE_TYPE=redis
-export DATABASE_URL=mongodb+srv://user:pass@cluster.mongodb.net
-export REDIS_URL=redis://redis-cluster:6379
+SERVER_HOST=0.0.0.0
+SERVER_PORT=8080
+SERVER_READ_TIMEOUT=30s
+SERVER_WRITE_TIMEOUT=30s
 ```
 
-### Docker Configuration
-
-#### Basic Setup
+##### 🗄️ Database Configuration
 ```bash
-# Start only dependencies
-docker-compose up -d redis mongodb
+REPOSITORY_TYPE=mongodb  # mongodb, memory
+MONGODB_HOST=mongodb     # Use 'localhost' when running outside Docker
+MONGODB_PORT=27017
+MONGODB_DATABASE=demo_clean
+MONGODB_USERNAME=admin
+MONGODB_PASSWORD=your_secure_password
+```
 
-# Start full application
+##### 🏃‍♂️ Cache Configuration
+```bash
+CACHE_TYPE=memory  # memory, redis
+REDIS_HOST=redis   # Use 'localhost' when running outside Docker
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password
+```
+
+##### 🔐 JWT Configuration
+```bash
+JWT_SECRET_KEY=your_very_secure_jwt_secret_key
+JWT_EXPIRATION=24h
+JWT_ISSUER=demo-clean-api
+```
+
+##### 📊 Logging Configuration
+```bash
+LOG_LEVEL=info      # debug, info, warn, error
+LOG_FORMAT=json     # json, text
+LOG_OUTPUT=stdout   # stdout, file
+```
+
+#### Docker Compose Profiles
+
+Use profiles to enable optional services:
+
+```bash
+# Development with MongoDB Express UI
+docker-compose --profile development up -d
+
+# With Redis cache
+docker-compose --profile cache up -d
+
+# With testing client
+docker-compose --profile testing up -d
+
+# Multiple profiles
+docker-compose --profile development --profile cache up -d
+```
+
+#### Environment-Specific Examples
+
+##### 🔧 Development (.env)
+```bash
+APP_ENVIRONMENT=development
+APP_DEBUG=true
+LOG_LEVEL=debug
+LOG_FORMAT=text
+GRAPHQL_PLAYGROUND_ENABLED=true
+```
+
+##### 🎭 Staging (.env)
+```bash
+APP_ENVIRONMENT=staging
+APP_DEBUG=false
+LOG_LEVEL=info
+LOG_FORMAT=json
+GRAPHQL_PLAYGROUND_ENABLED=false
+```
+
+##### 🚀 Production (.env)
+```bash
+APP_ENVIRONMENT=production
+APP_DEBUG=false
+LOG_LEVEL=warn
+LOG_FORMAT=json
+GRAPHQL_PLAYGROUND_ENABLED=false
+GRAPHQL_INTROSPECTION_ENABLED=false
+```
+
+#### Security Best Practices
+
+##### ✅ DO:
+- Use strong, unique passwords for each environment
+- Use different JWT secret keys for each environment
+- Keep `.env` files out of version control
+- Use environment-specific configurations
+- Rotate secrets regularly
+
+##### ❌ DON'T:
+- Commit `.env` files to Git
+- Use default passwords in production
+- Share the same JWT secret across environments
+- Store secrets in docker-compose.yml
+- Use debug mode in production
+
+#### Validation & Troubleshooting
+
+Check your configuration:
+
+```bash
+# Verify environment variables are loaded
+docker-compose config
+
+# Check specific service configuration
+docker-compose exec api-server env | grep MONGODB
+
+# Test the application
+curl http://localhost:8080/health
+```
+
+##### Common Issues:
+
+1. **Variables not loaded:**
+   - Ensure `.env` file is in the same directory as `docker-compose.yml`
+   - Check for syntax errors in `.env` file (no spaces around `=`)
+
+2. **Connection refused:**
+   - Verify service names match between containers
+   - Check if ports are already in use
+
+3. **Authentication failed:**
+   - Verify username/password combinations
+   - Check if the database is initialized properly
+
+##### Debug Commands:
+```bash
+# Check container logs
+docker-compose logs api-server
+docker-compose logs mongodb
+
+# Enter container to debug
+docker-compose exec api-server sh
+docker-compose exec mongodb mongosh
+```
+
+#### Configuration Examples
+
+##### Local Development Setup:
+```bash
+# Copy local defaults
+cp .env.local .env
+
+# Start with development tools
+docker-compose --profile development up -d
+
+# Access services
+# API: http://localhost:8080
+# MongoDB Express: http://localhost:8081
+```
+
+##### Production-like Setup:
+```bash
+# Copy example and customize
+cp .env.example .env
+
+# Edit with production values
+nano .env
+
+# Run minimal setup
 docker-compose up -d
-```
-
-#### Custom Docker Compose
-```yaml
-# docker-compose.override.yml
-version: '3.8'
-services:
-  app:
-    environment:
-      - LOG_LEVEL=debug
-      - GIN_MODE=debug
-    ports:
-      - "8080:8080"
-      - "2345:2345"  # Delve debugger
-    volumes:
-      - .:/app
 ```
 ## 🚀 API Documentation
 
@@ -725,7 +878,8 @@ demo-go/
 │   ├── integration/             # Integration tests
 │   ├── unit/                    # Unit tests
 │   └── load-test.js            # K6 performance tests
-├── scripts/
+├── scripts/                    # Project management scripts
+│   ├── project.sh              # Main project management script
 │   ├── setup-graphql.sh        # GraphQL setup script
 │   └── setup-cicd.sh           # CI/CD setup script
 ├── docs/
@@ -740,6 +894,170 @@ demo-go/
 ├── render.yaml                 # Render deployment config
 ├── Makefile                    # Build automation
 └── .golangci.yml              # Linting configuration
+```
+
+### Project Management Scripts
+
+The project includes powerful management scripts located in the `scripts/` directory for streamlined development workflow.
+
+#### Main Project Script (`scripts/project.sh`)
+
+A comprehensive project management script that provides a unified interface for common development tasks:
+
+```bash
+# Setup project dependencies
+scripts/project.sh setup
+# OR via Makefile
+make project-setup
+
+# Build project
+scripts/project.sh build
+make project-build
+
+# Run in development mode
+scripts/project.sh run dev 8080
+scripts/project.sh dev memory redis
+make project-dev
+
+# Run tests
+scripts/project.sh test coverage
+make project-test
+
+# Code quality
+scripts/project.sh format
+scripts/project.sh lint
+scripts/project.sh security
+make project-format project-lint project-security
+
+# Dependency management
+scripts/project.sh deps start
+scripts/project.sh deps stop
+scripts/project.sh deps restart
+
+# Clean build artifacts
+scripts/project.sh clean
+make project-clean
+```
+
+#### Available Commands
+
+| Command | Description | Makefile Equivalent |
+|---------|-------------|-------------------|
+| `setup` | Setup project dependencies | `make project-setup` |
+| `build [target]` | Build project (default: server) | `make project-build` |
+| `run [mode] [port]` | Run project (dev/prod modes) | `make project-run` |
+| `dev [repo] [cache]` | Run with hot reload | `make project-dev` |
+| `test [type]` | Run tests (unit/integration/coverage/all) | `make project-test` |
+| `deps [action]` | Manage dependencies (start/stop/restart) | - |
+| `clean` | Clean build artifacts | `make project-clean` |
+| `format` | Format Go code | `make project-format` |
+| `lint` | Lint Go code | `make project-lint` |
+| `security` | Run security scan | `make project-security` |
+
+#### Setup Scripts
+
+##### GraphQL Setup (`scripts/setup-graphql.sh`)
+```bash
+# Setup GraphQL with gqlgen
+scripts/setup-graphql.sh
+# OR
+make setup-graphql
+```
+
+Features:
+- Installs gqlgen CLI tool
+- Generates GraphQL boilerplate
+- Creates schema and resolver files
+- Sets up GraphQL server configuration
+
+##### CI/CD Setup (`scripts/setup-cicd.sh`)
+```bash
+# Setup CI/CD pipeline for Render deployment
+scripts/setup-cicd.sh
+# OR
+make setup-cicd
+```
+
+Features:
+- Configures GitHub Actions workflow
+- Sets up Render deployment
+- Configures environment variables
+- Sets up monitoring and alerts
+
+#### CI/CD Pipeline Integration
+
+The CI/CD pipeline (`.github/workflows/ci-cd.yml`) is fully integrated with the project scripts for consistency between local development and CI/CD environments:
+
+##### Pipeline Jobs Using Scripts:
+
+**🧪 Test Job:**
+```yaml
+- name: Setup project dependencies via script
+  run: scripts/project.sh setup
+
+- name: Format code via script
+  run: scripts/project.sh format
+
+- name: Lint code via script
+  run: scripts/project.sh lint
+
+- name: Run tests via script
+  run: scripts/project.sh test coverage
+```
+
+**🔒 Security Job:**
+```yaml
+- name: Setup project dependencies via script
+  run: scripts/project.sh setup
+
+- name: Run security scan via script
+  run: scripts/project.sh security
+```
+
+**🏗️ Build Job:**
+```yaml
+- name: Setup project dependencies via script
+  run: scripts/project.sh setup
+
+- name: Build project via script
+  run: scripts/project.sh build
+```
+
+##### Benefits of Script-Based CI/CD:
+- **🔄 Consistency**: Same commands work locally and in CI/CD
+- **🛠️ Maintainability**: Single source of truth for build logic
+- **🚀 Developer Experience**: Easy to reproduce CI/CD steps locally
+- **📊 Debugging**: Simplified troubleshooting of build issues
+
+#### Environment Variables for Scripts
+
+The scripts support environment variables for configuration:
+
+```bash
+export PORT=8080                    # Server port
+export REPOSITORY_TYPE=mongodb      # Repository type (memory, mongodb)
+export CACHE_TYPE=redis             # Cache type (memory, redis)
+export GIN_MODE=debug               # Gin mode (debug, release)
+export LOG_LEVEL=info               # Log level (debug, info, warn, error)
+```
+
+#### Examples
+
+```bash
+# Complete development setup
+scripts/project.sh setup
+scripts/project.sh deps start
+scripts/project.sh dev memory redis
+
+# Production-like testing
+scripts/project.sh build
+scripts/project.sh run prod
+scripts/project.sh test coverage
+
+# Code quality check
+scripts/project.sh format
+scripts/project.sh lint
+scripts/project.sh security
 ```
 
 ### Routes Architecture

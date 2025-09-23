@@ -7,11 +7,11 @@ services:
     container_name: demo-mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password123
-      MONGO_INITDB_DATABASE: demo_clean
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:-password123}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-demo_clean}
     ports:
-      - "27017:27017"
+      - "${MONGODB_PORT:-27017}:27017"
     volumes:
       - mongodb_data:/data/db
       - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
@@ -32,25 +32,46 @@ services:
     container_name: demo-api-server
     restart: unless-stopped
     environment:
+      # Application configuration
+      APP_NAME: ${APP_NAME:-demo-clean-api}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-development}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      
       # Server configuration
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 8080
+      SERVER_HOST: ${SERVER_HOST:-0.0.0.0}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      SERVER_READ_TIMEOUT: ${SERVER_READ_TIMEOUT:-30s}
+      SERVER_WRITE_TIMEOUT: ${SERVER_WRITE_TIMEOUT:-30s}
       
       # Repository configuration
-      REPOSITORY_TYPE: mongodb
+      REPOSITORY_TYPE: ${REPOSITORY_TYPE:-mongodb}
       
       # MongoDB configuration
-      MONGODB_URI: mongodb://admin:password123@mongodb:27017/demo_clean?authSource=admin
-      MONGODB_DATABASE: demo_clean
-      MONGODB_TIMEOUT: 10s
-      MONGODB_MAX_POOL_SIZE: 100
+      MONGODB_URI: mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-password123}@${MONGODB_HOST:-mongodb}:${MONGODB_PORT:-27017}/${MONGODB_DATABASE:-demo_clean}?authSource=admin
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-demo_clean}
+      MONGODB_TIMEOUT: ${MONGODB_TIMEOUT:-10s}
+      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-100}
+      
+      # Cache configuration
+      CACHE_TYPE: ${CACHE_TYPE:-memory}
+      REDIS_ADDRESS: ${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
       
       # JWT configuration
-      JWT_SECRET_KEY: super-secret-jwt-key-for-production-change-this
-      JWT_EXPIRATION: 24h
-      JWT_ISSUER: demo-clean-api-docker
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-development-jwt-secret-key}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
+      JWT_ISSUER: ${JWT_ISSUER:-demo-clean-api}
+      
+      # Logging configuration
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      LOG_OUTPUT: ${LOG_OUTPUT:-stdout}
+      
+      # GraphQL configuration
+      GRAPHQL_PLAYGROUND_ENABLED: ${GRAPHQL_PLAYGROUND_ENABLED:-true}
+      GRAPHQL_INTROSPECTION_ENABLED: ${GRAPHQL_INTROSPECTION_ENABLED:-true}
     ports:
-      - "8080:8080"
+      - "${SERVER_PORT:-8080}:8080"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -63,25 +84,46 @@ services:
       retries: 3
       start_period: 30s
 
+  # Redis Cache (Optional)
+  redis:
+    image: redis:7.2-alpine
+    container_name: demo-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - demo-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - cache
+
   # MongoDB Express (Database UI - Optional)
   mongo-express:
     image: mongo-express:1.0.0
     container_name: demo-mongo-express
     restart: unless-stopped
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: password123
-      ME_CONFIG_MONGODB_URL: mongodb://admin:password123@mongodb:27017/
-      ME_CONFIG_BASICAUTH_USERNAME: admin
-      ME_CONFIG_BASICAUTH_PASSWORD: admin
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGODB_USERNAME:-admin}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGODB_PASSWORD:-password123}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGODB_USERNAME:-admin}:${MONGODB_PASSWORD:-password123}@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-admin}
       ME_CONFIG_MONGODB_ENABLE_ADMIN: true
     ports:
-      - "8081:8081"
+      - "${MONGO_EXPRESS_PORT:-8081}:8081"
     depends_on:
       mongodb:
         condition: service_healthy
     networks:
       - demo-network
+    profiles:
+      - development
 
   # Test Client (Optional - for testing)
   test-client:
@@ -90,7 +132,8 @@ services:
       dockerfile: Dockerfile.client
     container_name: demo-test-client
     environment:
-      API_BASE_URL: http://api-server:8080
+      API_BASE_URL: ${TEST_API_BASE_URL:-http://api-server:8080}
+      TEST_TIMEOUT: ${TEST_TIMEOUT:-30s}
     depends_on:
       api-server:
         condition: service_healthy
@@ -101,6 +144,8 @@ services:
 
 volumes:
   mongodb_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:

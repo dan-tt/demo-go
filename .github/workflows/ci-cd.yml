@@ -1,5 +1,9 @@
 name: CI/CD Pipeline - Build and Deploy to Render
 
+# This CI/CD pipeline uses project scripts for consistency between local development and CI/CD
+# All build, test, lint, and security operations use the same scripts that developers use locally
+# Scripts are located in the ./scripts/ directory and can be executed via Makefile targets
+
 on:
   push:
     branches: [ main, develop ]
@@ -18,7 +22,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Test and lint the Go code
+  # Test and lint the Go code using project scripts
   test:
     name: Test and Lint
     runs-on: ubuntu-latest
@@ -66,29 +70,26 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    - name: Download dependencies
-      run: go mod download
+    - name: Make scripts executable
+      run: chmod +x scripts/*.sh
 
-    - name: Verify dependencies
-      run: go mod verify
+    - name: Setup project dependencies via script
+      run: scripts/project.sh setup
 
-    - name: Run linting
-      uses: golangci/golangci-lint-action@v3
-      with:
-        version: latest
-        args: --timeout=3m
+    - name: Format code via script
+      run: scripts/project.sh format
 
-    - name: Run tests
+    - name: Lint code via script
+      run: scripts/project.sh lint
+
+    - name: Run tests via script
       env:
         REDIS_ADDRESS: localhost:6379
         MONGODB_URI: mongodb://admin:password@localhost:27017
         JWT_SECRET: test-secret-key
         CACHE_TYPE: redis
-      run: |
-        go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
-
-    - name: Generate test coverage report
-      run: go tool cover -html=coverage.out -o coverage.html
+        REPOSITORY_TYPE: mongodb
+      run: scripts/project.sh test coverage
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
@@ -103,7 +104,7 @@ jobs:
         name: coverage-report
         path: coverage.html
 
-  # Security scanning
+  # Security scanning using project scripts
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -122,17 +123,14 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
 
-    - name: Download dependencies
-      run: go mod download
+    - name: Make scripts executable
+      run: chmod +x scripts/*.sh
 
-    - name: Run Gosec Security Scanner
-      run: |
-        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
-        gosec -fmt sarif -out gosec-results.sarif ./... || true
-        # Ensure the SARIF file exists even if no issues found
-        if [ ! -f gosec-results.sarif ]; then
-          echo '{"version":"2.1.0","$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","runs":[{"tool":{"driver":{"name":"gosec","version":"2.0.0"}},"results":[]}]}' > gosec-results.sarif
-        fi
+    - name: Setup project dependencies via script
+      run: scripts/project.sh setup
+
+    - name: Run security scan via script
+      run: scripts/project.sh security
       continue-on-error: true  # Don't fail the build on security warnings
 
     - name: Upload Gosec scan results to GitHub Security tab
@@ -155,7 +153,7 @@ jobs:
       with:
         sarif_file: 'trivy-results.sarif'
 
-  # Build Docker image
+  # Build Docker image with project scripts
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
@@ -169,6 +167,20 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Make scripts executable
+      run: chmod +x scripts/*.sh
+
+    - name: Setup project dependencies via script
+      run: scripts/project.sh setup
+
+    - name: Build project via script
+      run: scripts/project.sh build
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
