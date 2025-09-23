@@ -3,7 +3,10 @@
 package logger
 
 import (
+	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -54,14 +57,33 @@ func New(config *Config) (*Logger, error) {
 		zapConfig.Encoding = "json"
 	} else {
 		zapConfig.Encoding = "console"
-		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		// Custom console configuration for clean output
+		zapConfig.EncoderConfig = zapcore.EncoderConfig{
+			TimeKey:        "time",
+			LevelKey:       "level",
+			NameKey:        "logger",
+			CallerKey:      "caller",
+			MessageKey:     "msg",
+			StacktraceKey:  "stacktrace",
+			LineEnding:     zapcore.DefaultLineEnding,
+			EncodeLevel:    zapcore.CapitalColorLevelEncoder,
+			EncodeTime: func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+				enc.AppendString(t.Format("15:04:05.000"))
+			},
+			EncodeDuration: zapcore.StringDurationEncoder,
+			EncodeCaller: func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+				enc.AppendString(caller.TrimmedPath())
+			},
+			ConsoleSeparator: " | ",
+		}
+		
+		// For console output, only show time, level, and message
+		zapConfig.DisableCaller = true
 	}
 
 	// Customize encoder config for better readability
-	zapConfig.EncoderConfig.TimeKey = "timestamp"
-	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	zapConfig.EncoderConfig.TimeKey = "time"
 	zapConfig.EncoderConfig.CallerKey = "caller"
-	zapConfig.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
 
 	// Build the logger
 	zapLogger, err := zapConfig.Build(zap.AddCallerSkip(1))
@@ -99,7 +121,52 @@ func (l *Logger) WithField(key string, value interface{}) *Logger {
 
 // WithError adds an error field to the logger
 func (l *Logger) WithError(err error) *Logger {
-	return l.WithField("error", err.Error())
+	return &Logger{
+		SugaredLogger: l.SugaredLogger.With("error", err),
+	}
+}
+
+// Console logs a clean message without structured fields for console output
+func (l *Logger) Console(level string, message string) {
+	config := DefaultConfig()
+	if config.Format == "console" {
+		// For console format, use simple printf-style logging without structured fields
+		timestamp := time.Now().Format("15:04:05.000")
+		levelUpper := strings.ToUpper(level)
+		fmt.Printf("%s | %s | %s\n", timestamp, levelUpper, message)
+	} else {
+		// For JSON format, use structured logging
+		switch level {
+		case "debug":
+			l.Debug(message)
+		case "info":
+			l.Info(message)
+		case "warn":
+			l.Warn(message)
+		case "error":
+			l.Error(message)
+		}
+	}
+}
+
+// ConsoleInfo logs an info message with clean console formatting
+func (l *Logger) ConsoleInfo(message string) {
+	l.Console("info", message)
+}
+
+// ConsoleWarn logs a warning message with clean console formatting
+func (l *Logger) ConsoleWarn(message string) {
+	l.Console("warn", message)
+}
+
+// ConsoleError logs an error message with clean console formatting
+func (l *Logger) ConsoleError(message string) {
+	l.Console("error", message)
+}
+
+// ConsoleDebug logs a debug message with clean console formatting
+func (l *Logger) ConsoleDebug(message string) {
+	l.Console("debug", message)
 }
 
 // WithRequestID adds a request ID field to the logger

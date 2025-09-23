@@ -16,7 +16,7 @@ A production-ready Go web server implementing clean architecture principles with
 - **🔐 JWT Authentication**: Secure authentication with refresh token support
 - **🍃 MongoDB Integration**: Flexible NoSQL database with connection pooling
 - **📊 GraphQL API**: Modern API with type safety and real-time subscriptions
-- **🔍 Structured Logging**: Comprehensive logging with Uber Zap
+- **🔍 Structured Logging**: Comprehensive logging with Uber Zap, enhanced console formatting, and pretty JSON request/response logging
 - **🐳 Containerized**: Production-ready Docker configuration
 
 ### DevOps & Operations
@@ -207,8 +207,52 @@ JWT_ISSUER=demo-clean-api
 ##### 📊 Logging Configuration
 ```bash
 LOG_LEVEL=info      # debug, info, warn, error
-LOG_FORMAT=json     # json, text
+LOG_FORMAT=console  # console, json, text (recommended: console for development, json for production)
 LOG_OUTPUT=stdout   # stdout, file
+```
+
+**Enhanced Console Logging Features:**
+- 🕒 **Clean Time Format**: `HH:MM:SS.mmm` instead of full timestamps
+- 🎯 **Status Emojis**: Visual status indicators (✅ success, ⚠️ warnings, 🚨 errors)
+- 📊 **Readable Metrics**: Human-friendly duration (`207µs`) and size (`84B`) formatting
+- 🔇 **Smart Filtering**: Health check endpoints are logged quietly to reduce noise
+- 🌈 **Better Structure**: Clean separators and organized field layout
+- 📍 **Client Information**: Real client IP extraction and user agent logging
+- 📋 **Pretty JSON Logging**: Beautiful request/response JSON formatting with proper indentation
+- 📄 **Multi-line Format**: Uses newlines instead of separators for better readability
+
+**Example Console Output:**
+```
+11:51:24.157 | INFO | → Request started
+Method: POST
+Path: /auth/register
+User-Agent: curl/8.7.1
+Client-IP: ::1
+Request Body:
+{
+  "email": "test@example.com",
+  "name": "Test User",
+  "password": "password123",
+  "username": "testuser"
+}
+
+11:51:24.207 | INFO | ← Request completed ✅
+Status: 201
+Duration: 50.731ms
+Size: 232B
+Response Body:
+{
+  "data": {
+    "created_at": "2025-09-23T11:51:24.207652+07:00",
+    "email": "test@example.com",
+    "id": "1",
+    "name": "Test User",
+    "role": "user",
+    "updated_at": "2025-09-23T11:51:24.207652+07:00"
+  },
+  "message": "User registered successfully",
+  "success": true
+}
 ```
 
 #### Docker Compose Profiles
